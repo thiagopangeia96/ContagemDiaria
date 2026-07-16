@@ -589,8 +589,35 @@ function registrar(){
   };
 
   var btn = document.getElementById('btn-registrar');
-  btn.disabled=true; btn.innerHTML='<span class="spinner"></span> Registrando...';
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span> Verificando...';
 
+  // Verifica se item já foi contado neste inventário
+  fetch(SCRIPT_URL+'?action=verificarDuplicata&invId='+encodeURIComponent(invAtivo.id)+
+    '&produto='+encodeURIComponent(produto)+'&cor='+encodeURIComponent(cor)+
+    '&tamanho='+encodeURIComponent(tam)+'&t='+Date.now())
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(d.duplicata){
+        btn.disabled=false; btn.innerHTML='Registrar Contagem';
+        var msg = '⚠️ Este item já foi contado!\n\n'+
+          '📦 ' + produto + ' · ' + cor + ' · ' + tam + '\n'+
+          '👤 Contado por: ' + d.colaborador + '\n'+
+          '🔢 Quantidade registrada: ' + d.quantidade + ' peças\n\n'+
+          'Procure ' + d.colaborador + ' para verificar e colocar no local correto antes de registrar novamente.\n\n'+
+          'Deseja registrar mesmo assim?';
+        if(!confirm(msg)) return;
+        enviarContagem(payload, btn);
+      } else {
+        enviarContagem(payload, btn);
+      }
+    })
+    .catch(function(){
+      // Se não conseguir verificar (offline), envia direto
+      enviarContagem(payload, btn);
+    });
+
+function enviarContagem(payload, btn){
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span> Registrando...';
   fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify(payload)})
     .then(function(r){ return r.json(); })
     .then(function(d){
@@ -607,6 +634,7 @@ function registrar(){
       carregarHistoricoInv();
     })
     .finally(function(){ btn.disabled=false; btn.innerHTML='Registrar Contagem'; });
+}
 }
 
 function limparForm(){
