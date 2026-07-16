@@ -692,7 +692,12 @@ function finalizarInventario(id, nome){
   fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({acao:'finalizarInventario',id:id,master:usuarioLogado})})
     .then(function(r){ return r.json(); })
     .then(function(d){
-      if(d.ok){ toast('✅ Inventário finalizado!'); carregarMasterInventarios(); }
+      if(d.ok){
+        var msg = '✅ Inventário finalizado!';
+        if(d.naoContados > 0) msg += ' ' + d.naoContados + ' item(s) sem contagem registrado(s) com quantidade 0.';
+        toast(msg);
+        carregarMasterInventarios();
+      }
       else { toast('❌ '+d.erro); }
     });
 }
