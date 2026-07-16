@@ -405,6 +405,15 @@ function carregarMasterInventarios(){
     });
 }
 
+// ── PRODUTO / COR / TAMANHO ────────────────────────────────────────────
+// Normaliza cor: "001 - PRETO" → "PRETO"  |  "PRETO" → "PRETO"
+function normCor(c){
+  if(!c) return '';
+  var s = c.toString().trim();
+  var m = s.match(/^\d+\s*-\s*(.+)$/);
+  return m ? m[1].trim() : s;
+}
+
 function criarInventario(){
   var nome=(document.getElementById('inv-nome').value||'').trim();
   var file=document.getElementById('inv-file').files[0];
