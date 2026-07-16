@@ -420,8 +420,8 @@ function criarInventario(){
 
         var itens = rows.map(function(r){
           // Aceita variações de nome de coluna: Código/SKU, Descrição/PRODUTO, Cor/COR, Tam/TAMANHO
-          var sku     = (r['Código']||r['SKU']||r['CODIGO']||r['sku']||'').toString().trim();
-          var produto = (r['Descrição']||r['PRODUTO']||r['Descricao']||r['produto']||'').toString().trim();
+          var sku     = (r['SKU (Código)']||r['Código']||r['SKU']||r['CODIGO']||r['sku']||'').toString().trim();
+          var produto = (r['PRODUTO (Descrição)']||r['Descrição']||r['PRODUTO']||r['Descricao']||r['produto']||'').toString().trim();
           var cor     = (r['Cor']||r['COR']||r['cor']||'').toString().trim();
           var tam     = (r['Tam']||r['TAMANHO']||r['Tamanho']||r['tam']||'').toString().trim();
           if(!sku && !produto) return null;
