@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Pangeia · Contagem de Estoque</title>
+<style>
+:root{
+  --roxo:#592C95;--roxo-esc:#3D1B6B;--roxo-cl:#AE76E5;
+  --lav:#E4D4F9;--lav-l:#F5EEFB;
+  --txt:#2A1655;--txt-s:#6B5B8E;--brd:#D9C7F0;
+  --ok:#0F6E56;--ok-bg:#dcfce7;--ok-txt:#166534;
+  --bad:#A32D2D;--bad-bg:#fee2e2;--bad-txt:#991b1b;
+  --amarelo:#FFD23F;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,'Segoe UI',sans-serif;background:var(--lav-l);color:var(--txt);min-height:100vh;}
+
+/* LOGIN */
+#login-overlay{position:fixed;inset:0;background:var(--lav-l);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;}
+.login-box{background:#fff;border-radius:20px;border:1px solid var(--brd);padding:32px 24px;width:100%;max-width:380px;box-shadow:0 8px 32px rgba(89,44,149,.15);}
+.login-logo{text-align:center;margin-bottom:24px;}
+.login-logo .icon{font-size:44px;}
+.login-logo h1{font-size:20px;font-weight:800;color:var(--roxo);margin-top:8px;}
+.login-logo p{font-size:12px;color:var(--txt-s);margin-top:4px;}
+#login-erro{display:none;background:var(--bad-bg);color:var(--bad-txt);border-radius:8px;padding:10px 12px;font-size:12px;font-weight:700;margin-bottom:12px;text-align:center;}
+
+/* TOPBAR */
+.topbar{background:linear-gradient(135deg,var(--roxo),var(--roxo-esc));padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.topbar-title{font-size:15px;font-weight:800;color:#fff;}
+.topbar-sub{font-size:10px;color:rgba(255,255,255,.7);margin-top:1px;}
+.topbar-right{display:flex;align-items:center;gap:8px;}
+.status-badge{padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;}
+.badge-ok{background:var(--ok-bg);color:var(--ok-txt);}
+.badge-err{background:var(--bad-bg);color:var(--bad-txt);}
+.badge-warn{background:#fef3c7;color:#854d0e;}
+
+/* BANNER INVENTÁRIO */
+#banner-inv{display:none;background:linear-gradient(135deg,#1e40af,#1d4ed8);color:#fff;padding:10px 16px;text-align:center;font-size:12px;font-weight:700;}
+
+/* MENU */
+.menu{display:flex;background:#fff;border-bottom:2px solid var(--lav);position:sticky;top:50px;z-index:99;}
+.menu-btn{flex:1;padding:10px 4px;text-align:center;font-size:11px;font-weight:700;color:var(--txt-s);border:none;background:transparent;cursor:pointer;border-bottom:3px solid transparent;}
+.menu-btn.active{color:var(--roxo);border-bottom-color:var(--roxo);background:var(--lav-l);}
+.menu-btn .icon{font-size:16px;display:block;margin-bottom:2px;}
+.tab-content{display:none;padding:14px;max-width:800px;margin:0 auto;}
+.tab-content.active{display:block;}
+
+/* CARDS */
+.card{background:#fff;border-radius:14px;border:1px solid var(--brd);padding:14px 16px;margin-bottom:12px;box-shadow:0 2px 8px rgba(89,44,149,.06);}
+.card-title{font-size:11px;font-weight:800;color:var(--roxo);text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;}
+
+/* TIPO */
+.tipo-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.tipo-btn{padding:16px 8px;border-radius:12px;border:2px solid var(--brd);background:#fff;cursor:pointer;text-align:center;transition:all .2s;font-size:12px;font-weight:700;color:var(--txt-s);}
+.tipo-btn .tipo-icon{font-size:26px;display:block;margin-bottom:4px;}
+.tipo-btn.selected{border-color:var(--roxo);background:var(--lav-l);color:var(--roxo);}
+
+/* FIELDS */
+.field{margin-bottom:12px;}
+.field label{display:block;font-size:11px;font-weight:700;color:var(--txt-s);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;}
+.field input,.field select,.field textarea{width:100%;padding:11px 14px;border:1.5px solid var(--brd);border-radius:10px;font-size:14px;font-family:inherit;outline:none;color:var(--txt);background:#fff;transition:border-color .15s;}
+.field input:focus,.field select:focus{border-color:var(--roxo);}
+.field select:disabled{background:#f5f5f5;color:#aaa;}
+.manual-link{font-size:11px;font-weight:700;color:var(--roxo);background:none;border:none;cursor:pointer;padding:4px 0;display:block;margin-top:4px;}
+
+/* TAMANHOS */
+.tam-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;}
+.tam-btn{width:46px;height:46px;border-radius:50%;border:2px solid var(--brd);background:#fff;font-size:12px;font-weight:700;color:var(--txt-s);cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;justify-content:center;}
+.tam-btn.sel{border-color:var(--roxo);background:var(--roxo);color:#fff;}
+.tam-btn:hover:not(.sel){border-color:var(--roxo-cl);color:var(--roxo);}
+
+/* QTD */
+.qtd-box{background:var(--lav-l);border-radius:12px;padding:14px;text-align:center;}
+.qtd-box label{display:block;font-size:10px;font-weight:700;color:var(--txt-s);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;}
+.qtd-input{width:100%;padding:14px;border:2px solid var(--brd);border-radius:10px;font-size:32px;font-weight:800;text-align:center;color:var(--txt);outline:none;background:#fff;}
+.qtd-input:focus{border-color:var(--roxo);}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:13px 20px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;border:none;transition:all .15s;width:100%;justify-content:center;margin-top:4px;}
+.btn-primary{background:linear-gradient(135deg,var(--roxo),var(--roxo-esc));color:#fff;box-shadow:0 4px 14px rgba(89,44,149,.3);}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed;}
+.btn-secondary{background:#fff;color:var(--roxo);border:1.5px solid var(--roxo);}
+.btn-danger{background:#fff;color:var(--bad-txt);border:1.5px solid var(--bad-txt);}
+.btn-sm{padding:7px 14px;font-size:11px;width:auto;}
+
+/* HISTÓRICO */
+.reg-item{background:var(--lav-l);border-radius:10px;padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:8px;}
+.reg-desc strong{display:block;font-size:13px;}
+.reg-desc span{font-size:11px;color:var(--txt-s);}
+.reg-qtd{background:var(--roxo);color:#fff;padding:4px 12px;border-radius:8px;font-weight:800;font-size:14px;white-space:nowrap;}
+.reg-tipo{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700;display:inline-block;margin-top:3px;}
+.tipo-principal{background:#dbeafe;color:#1e40af;}
+.tipo-reserva{background:var(--ok-bg);color:var(--ok-txt);}
+
+/* INVENTÁRIO */
+.inv-card{background:#fff;border-radius:12px;border:2px solid var(--brd);padding:14px;margin-bottom:10px;cursor:pointer;transition:all .15s;}
+.inv-card.active-inv{border-color:#1d4ed8;background:#eff6ff;}
+.inv-card .inv-nome{font-weight:800;font-size:14px;color:var(--txt);}
+.inv-card .inv-meta{font-size:11px;color:var(--txt-s);margin-top:4px;}
+.inv-status{display:inline-block;padding:2px 10px;border-radius:20px;font-size:10px;font-weight:700;margin-top:6px;}
+.st-aberto{background:#dcfce7;color:#166534;}
+.st-fechado{background:#fee2e2;color:#991b1b;}
+
+/* RESUMO */
+.resumo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;}
+.resumo-card{background:#fff;border-radius:12px;border:1px solid var(--brd);padding:10px;text-align:center;}
+.resumo-card .r-val{font-size:22px;font-weight:800;color:var(--roxo);}
+.resumo-card .r-lbl{font-size:10px;color:var(--txt-s);text-transform:uppercase;margin-top:2px;}
+
+/* EMPTY */
+.empty{text-align:center;padding:32px 20px;color:var(--txt-s);}
+.empty .empty-icon{font-size:40px;margin-bottom:10px;}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e1b4b;color:#fff;padding:12px 20px;border-radius:12px;font-size:13px;font-weight:600;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;max-width:320px;text-align:center;}
+.toast.show{opacity:1;}
+
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-overlay">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="icon">📦</div>
+      <h1>Pangeia · Estoque</h1>
+      <p>Contagem de Inventário</p>
+    </div>
+    <div class="field"><label>Usuário</label>
+      <input type="text" id="login-user" placeholder="Seu usuário" autocomplete="username"
+             onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()">
+    </div>
+    <div class="field"><label>Senha</label>
+      <input type="password" id="login-pass" placeholder="Sua senha"
+             onkeydown="if(event.key==='Enter')fazerLogin()">
+    </div>
+    <div id="login-erro"></div>
+    <button class="btn btn-primary" id="btn-login" onclick="fazerLogin()">Entrar</button>
+  </div>
+</div>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div>
+    <div class="topbar-title">📦 Pangeia · Estoque</div>
+    <div class="topbar-sub" id="topbar-nome"></div>
+  </div>
+  <div class="topbar-right">
+    <span id="inv-badge" style="display:none;background:#fef3c7;color:#854d0e;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;"></span>
+    <div id="statusConn" class="status-badge badge-err">⚡</div>
+  </div>
+</div>
+
+<!-- BANNER INVENTÁRIO ATIVO -->
+<div id="banner-inv">📋 Inventário ativo: <span id="banner-nome-inv"></span></div>
+
+<!-- MENU -->
+<nav class="menu">
+  <button class="menu-btn active" onclick="mudarAba('contar')" id="btn-contar">
+    <span class="icon">📝</span>Contar
+  </button>
+  <button class="menu-btn" onclick="mudarAba('historico')" id="btn-historico">
+    <span class="icon">📋</span>Histórico
+  </button>
+  <button class="menu-btn" onclick="mudarAba('inventario')" id="btn-inventario">
+    <span class="icon">📊</span>Inventários
+  </button>
+  <button class="menu-btn" id="btn-master" onclick="mudarAba('master')" style="display:none;">
+    <span class="icon">⚙️</span>Master
+  </button>
+</nav>
+
+<!-- ABA CONTAR -->
+<div class="tab-content active" id="tab-contar">
+  <div id="sem-inventario-msg" class="card" style="text-align:center;padding:24px;">
+    <div style="font-size:36px;margin-bottom:10px;">🔒</div>
+    <div style="font-weight:700;margin-bottom:6px;">Nenhum inventário aberto</div>
+    <div style="font-size:12px;color:var(--txt-s);">Aguarde o master abrir um inventário para iniciar a contagem.</div>
+  </div>
+
+  <div id="form-contar" style="display:none;">
+    <div class="card">
+      <div class="card-title">Tipo de Contagem</div>
+      <div class="tipo-grid">
+        <button class="tipo-btn" onclick="selTipo('Estoque Principal')" id="tipo-Principal">
+          <span class="tipo-icon">🏪</span>Estoque Principal
+        </button>
+        <button class="tipo-btn" onclick="selTipo('Estoque Reserva')" id="tipo-Reserva">
+          <span class="tipo-icon">📦</span>Estoque Reserva
+        </button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Produto</div>
+      <div class="field">
+        <label>Modelo</label>
+        <input type="text" id="inp-produto" placeholder="Digite para buscar... ex: ALISON"
+               oninput="filtrarProdutos(this.value)" autocomplete="off">
+        <div id="produto-suggestions" style="display:none;background:#fff;border:1.5px solid var(--brd);border-radius:10px;margin-top:4px;max-height:200px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.1);z-index:50;position:relative;"></div>
+      </div>
+      <div class="field">
+        <label>Cor</label>
+        <select id="sel-cor" disabled onchange="carregarTamanhos()">
+          <option value="">— selecione o modelo primeiro —</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Tamanho</label>
+        <div class="tam-grid" id="tam-grid">
+          <div style="font-size:12px;color:var(--txt-s);padding:8px 0;">Selecione o modelo e a cor primeiro</div>
+        </div>
+        <input type="hidden" id="inp-tam">
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Quantidade</div>
+      <div class="qtd-box">
+        <label>Total de peças em bom estado</label>
+        <input class="qtd-input" type="number" id="inp-qtd" placeholder="0" min="0" inputmode="numeric">
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Observações <span style="font-size:10px;font-weight:400;color:var(--txt-s)">(opcional)</span></div>
+      <textarea id="inp-obs" rows="2" placeholder="Alguma observação..." style="width:100%;padding:11px 14px;border:1.5px solid var(--brd);border-radius:10px;font-size:14px;font-family:inherit;outline:none;resize:none;" onfocus="this.style.borderColor='var(--roxo)'" onblur="this.style.borderColor='var(--brd)'"></textarea>
+    </div>
+
+    <button class="btn btn-primary" id="btn-registrar" onclick="registrar()">Registrar Contagem</button>
+  </div>
+</div>
+
+<!-- ABA HISTÓRICO -->
+<div class="tab-content" id="tab-historico">
+  <div class="card">
+    <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+      <span>Meus lançamentos</span>
+      <button class="btn btn-secondary btn-sm" onclick="carregarHistorico()">↺ Atualizar</button>
+    </div>
+    <div id="lista-historico"><div class="empty"><div class="empty-icon">📋</div><p>Nenhum lançamento ainda</p></div></div>
+  </div>
+</div>
+
+<!-- ABA INVENTÁRIOS -->
+<div class="tab-content" id="tab-inventario">
+  <div class="card">
+    <div class="card-title">Inventários disponíveis</div>
+    <div id="lista-inventarios"><div class="empty"><div class="empty-icon">📊</div><p>Carregando...</p></div></div>
+  </div>
+</div>
+
+<!-- ABA MASTER -->
+<div class="tab-content" id="tab-master">
+  <div class="card" style="border:2px solid var(--roxo);">
+    <div class="card-title">⚙️ Painel Master</div>
+
+    <div style="margin-bottom:16px;">
+      <div style="font-size:12px;font-weight:700;color:var(--txt-s);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Criar novo inventário</div>
+      <div class="field"><label>Nome do inventário</label>
+        <input type="text" id="inv-nome" placeholder="Ex: Inventário Loja Jul/2026">
+      </div>
+      <div class="field"><label>Upload da lista de itens (.xlsx)</label>
+        <input type="file" id="inv-file" accept=".xlsx" style="padding:8px 0;font-size:13px;">
+        <div style="font-size:10px;color:var(--txt-s);margin-top:4px;">Colunas esperadas: SKU · PRODUTO · COR · TAMANHO</div>
+      </div>
+      <button class="btn btn-primary btn-sm" style="width:auto;padding:10px 20px;" onclick="criarInventario()">Criar Inventário</button>
+    </div>
+
+    <div>
+      <div style="font-size:12px;font-weight:700;color:var(--txt-s);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Inventários ativos</div>
+      <div id="master-lista-inv"><div class="empty"><div class="empty-icon">📊</div><p>Nenhum inventário</p></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var SCRIPT_URL = 'SCRIPT_URL_AQUI';
+var CATALOG = {"BLUSA FLORA": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "BL0012"}}, "JAQUETA  STELLA": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "JA0001"}}, "REGATA HOT - INATIVO": {"VERMELHO": {"cod_cor": "006", "tamanhos": ["P", "M", "G"], "sku": "I00061"}}, "ADESIVO - PNG": {"UNICA": {"cod_cor": "000", "tamanhos": ["U"], "sku": "BRI002"}}, "BIQUINI CORTININHA - PNG": {"UNICA": {"cod_cor": "000", "tamanhos": ["U"], "sku": "BRI010"}}, "BIQUINI MARQUINHA - PNG": {"UNICA": {"cod_cor": "000", "tamanhos": ["U"], "sku": "BRI009"}}, "BIQUÍNI KIARA": {"AMARELO": {"cod_cor": "040", "tamanhos": ["P", "M", "G"], "sku": "BI0001"}, "PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "BI0001"}}, "BIQUÍNI NINA": {"AMARELO": {"cod_cor": "040", "tamanhos": ["P", "M", "G"], "sku": "BI0002"}, "PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "BI0002"}}, "BLACK CARD - PNG": {"UNICA": {"cod_cor": "000", "tamanhos": ["U"], "sku": "BRI004"}}, "BLOQUINHO - PNG": {"UNICA": {"cod_cor": "000", "tamanhos": ["U"], "sku": "BRI003"}}, "BLUSA  HELENA": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "BL0014"}}, "BLUSA  NORA": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "BL0006"}}, "BLUSA ANDY": {"ONÇA": {"cod_cor": "038", "tamanhos": ["P", "M", "G"], "sku": "BL0021"}}, "BLUSA AYLA": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "BL0003"}}, "BLUSA CAMISA BABADOS TESTE": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "BL0009"}}, "BLUSA CAROLINA": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "BL0020"}}, "BLUSA CORA": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "BL0013"}}, "BLUSA CORSET TESTE": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "BL0010"}}, "BLUSA DALILA": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "BL0015"}}, "BLUSA DANY": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "BL0019"}}, "BLUSA ELOISE": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "BL0011"}}, "BLUSA EVA": {"ONÇA": {"cod_cor": "038", "tamanhos": ["P", "M", "G"], "sku": "BL0017"}}, "BLUSA HANNA": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "BL0001"}}, "BLUSA ISY": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "BL0008"}}, "BLUSA JADE": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "BL0004"}}, "BLUSA LEXIE": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "T00077"}}, "BLUSA LOLA": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "BL0002"}}, "BLUSA MIMI": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "BL0005"}}, "BLUSA SASHA": {"OFF WHITE": {"cod_cor": "003", "tamanhos": ["P", "M", "G"], "sku": "T00098"}}, "BLUSA VIOLA": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "BL0018"}}, "BLUSA ZOE": {"OFF WHITE": {"cod_cor": "003", "tamanhos": ["P", "M", "G"], "sku": "BL0016"}}, "BODY AMANDA": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "B00003"}, "MARROM": {"cod_cor": "004", "tamanhos": ["P", "M", "G"], "sku": "B00003"}, "VERMELHO": {"cod_cor": "006", "tamanhos": ["P", "M", "G"], "sku": "B00003"}, "CINZA": {"cod_cor": "005", "tamanhos": ["P", "M", "G"], "sku": "B00003"}}, "BODY AURA": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "B00009"}}, "BODY BERLIM - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00077"}}, "BODY CHARLY": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "B00013"}, "CHUMBO": {"cod_cor": "009", "tamanhos": ["P", "M", "G"], "sku": "B00013"}, "VERMELHO": {"cod_cor": "006", "tamanhos": ["P", "M", "G"], "sku": "B00013"}, "CINZA": {"cod_cor": "005", "tamanhos": ["P", "M", "G"], "sku": "B00013"}}, "BODY CLEO": {"CINZA": {"cod_cor": "005", "tamanhos": ["P", "M", "G"], "sku": "B00010"}, "PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "B00010"}}, "BODY JENNY - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00002"}}, "BODY MAITÊ": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "B00004"}, "MARROM": {"cod_cor": "004", "tamanhos": ["P", "M", "G"], "sku": "B00004"}}, "BODY MARGOT - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00001"}}, "BODY MATILDA": {"PRETO": {"cod_cor": "001", "tamanhos": ["PP", "P", "M", "G", "GG", "XGG"], "sku": "B00001"}, "BRANCO": {"cod_cor": "002", "tamanhos": ["PP", "P", "M", "G", "GG", "XGG"], "sku": "B00001"}, "VERMELHO": {"cod_cor": "006", "tamanhos": ["PP", "P", "M", "G", "GG", "XGG"], "sku": "B00001"}, "MARROM": {"cod_cor": "004", "tamanhos": ["PP", "P", "M", "G", "GG", "XGG"], "sku": "B00001"}, "CINZA": {"cod_cor": "005", "tamanhos": ["PP", "P", "M", "G", "GG", "XGG"], "sku": "B00001"}, "AMARELO": {"cod_cor": "040", "tamanhos": ["PP", "P", "M", "G", "GG", "XGG"], "sku": "B00001"}}, "BODY OLIVIA": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "B00006"}, "MARROM": {"cod_cor": "004", "tamanhos": ["P", "M", "G"], "sku": "B00006"}}, "BODY PENÉLOPE": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "B00007"}}, "BODY SAKURA": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "B00014"}}, "BODY SHARPAY - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00075"}}, "BODY SURPRESA - PNG": {"UNICA": {"cod_cor": "000", "tamanhos": ["U"], "sku": "BRI008"}}, "BODY TEREZA": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "B00008"}}, "BODY VITORIA - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00078"}}, "BRINDE REGATA BRA - PNG": {"UNICA": {"cod_cor": "000", "tamanhos": ["U"], "sku": "BRI014"}}, "CALÇA AMARRAÇÃO TESTE": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "C00017"}}, "CALÇA ANGELINA - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00055"}}, "CALÇA ANITTA": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "C00018"}}, "CALÇA BÁRBARA - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["34", "36", "38", "40", "42"], "sku": "I00058"}}, "CALÇA CHER - INATIVO": {"AZUL": {"cod_cor": "032", "tamanhos": ["32", "34", "36", "38", "40", "42"], "sku": "I00007"}}, "CALÇA DUNA": {"AZUL": {"cod_cor": "032", "tamanhos": ["32", "34", "36", "38", "40", "42"], "sku": "C00011"}, "PRETO": {"cod_cor": "001", "tamanhos": ["32", "34", "36", "38", "40", "42"], "sku": "C00011"}}, "CALÇA ELINA - INATIVO": {"AZUL": {"cod_cor": "032", "tamanhos": ["32", "34", "36", "38", "40", "42"], "sku": "I00056"}}, "CALÇA HOLLY - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["32", "34", "36", "38", "40", "42"], "sku": "I00003"}}, "CALÇA JULLY": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "C00016"}}, "CALÇA MIRANDA": {"PRETO": {"cod_cor": "001", "tamanhos": ["32", "34", "36", "38", "40", "42"], "sku": "C00003"}, "ONÇA": {"cod_cor": "038", "tamanhos": ["32", "34", "36", "38", "40", "42"], "sku": "C00003"}}, "CALÇA NIKKI": {"CHUMBO": {"cod_cor": "009", "tamanhos": ["32", "34", "36", "38", "40", "42"], "sku": "C00005"}, "CINZA": {"cod_cor": "005", "tamanhos": ["32", "34", "36", "38", "40", "42"], "sku": "C00005"}, "PRETO": {"cod_cor": "001", "tamanhos": ["32", "34", "36", "38", "40", "42"], "sku": "C00005"}}, "CALÇA ORNELLA - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00005"}}, "CALÇA SELENA": {"AZUL": {"cod_cor": "032", "tamanhos": ["32", "34", "36", "38", "40", "42"], "sku": "C00014"}}, "CALÇA STELLA - INATIVO": {"BLACK JEANS": {"cod_cor": "036", "tamanhos": ["32", "34", "36", "38", "40", "42"], "sku": "I00057"}}, "CALÇA TEDDY": {"MARROM": {"cod_cor": "004", "tamanhos": ["32", "34", "36", "38", "40", "42"], "sku": "C00002"}, "BEGE": {"cod_cor": "010", "tamanhos": ["32", "34", "36", "38", "40", "42"], "sku": "C00002"}, "PRETO": {"cod_cor": "001", "tamanhos": ["32", "34", "36", "38", "40", "42"], "sku": "C00002"}, "VERMELHO": {"cod_cor": "006", "tamanhos": ["32", "34", "36", "38", "40", "42"], "sku": "C00002"}, "BLACK JEANS": {"cod_cor": "036", "tamanhos": ["32", "34", "36", "38", "40", "42"], "sku": "C00002"}, "CINZA": {"cod_cor": "005", "tamanhos": ["32", "34", "36", "38", "40", "42"], "sku": "C00002"}, "OFF WHITE": {"cod_cor": "003", "tamanhos": ["32", "34", "36", "38", "40", "42"], "sku": "C00002"}}, "CALÇA TORONTO - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["32", "34", "36", "38", "40", "42"], "sku": "I00080"}, "CINZA": {"cod_cor": "005", "tamanhos": ["32", "34", "36", "38", "40", "42"], "sku": "I00080"}, "BEGE": {"cod_cor": "010", "tamanhos": ["32", "34", "36", "38", "40", "42"], "sku": "I00080"}}, "CALÇA TRICOT ANAHÍ": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "C00015"}}, "CALÇA VÊNUS": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "C00019"}}, "CAMISA MALIBU - INATIVO": {"AZUL": {"cod_cor": "032", "tamanhos": ["P", "M", "G"], "sku": "I00030"}}, "CAMISA ORNELLA - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00026"}}, "CASACO JESSI": {"AREIA": {"cod_cor": "063", "tamanhos": ["P", "M", "G"], "sku": "CA0002"}, "PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "CA0002"}}, "CASACO NAOMI": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "CA0001"}, "VERMELHO": {"cod_cor": "006", "tamanhos": ["P", "M", "G"], "sku": "CA0001"}, "AZUL": {"cod_cor": "032", "tamanhos": ["P", "M", "G"], "sku": "CA0001"}}, "CASACO SIENA": {"AMARELO": {"cod_cor": "040", "tamanhos": ["P", "M", "G"], "sku": "CA0003"}}, "CHAVEIRO - PNG": {"UNICA": {"cod_cor": "000", "tamanhos": ["U"], "sku": "BRI001"}}, "COPO STAR - PNG": {"UNICA": {"cod_cor": "000", "tamanhos": ["U"], "sku": "BRI012"}}, "ECOBAG - PNG": {"UNICA": {"cod_cor": "000", "tamanhos": ["U"], "sku": "BRI005"}}, "EXCLUIR PRODUTO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "ZZZZZZZZZZZZZZZZZ7"}}, "INFLU CARD - PNG": {"UNICA": {"cod_cor": "000", "tamanhos": ["U"], "sku": "BRI011"}}, "JAQUETA BRA": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "JA0002"}}, "JAQUETA MIRANDA - INATIVO": {"ONÇA": {"cod_cor": "038", "tamanhos": ["P", "M", "G"], "sku": "I00060"}}, "LOOK SURPRESA - PNG": {"UNICA": {"cod_cor": "000", "tamanhos": ["U"], "sku": "BRI006"}}, "MACACÃO DESIRÉ - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["PP", "P", "M", "G"], "sku": "I00076"}}, "MACAQUITO SOLÉ - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00013"}}, "OCULOS - PNG": {"UNICA": {"cod_cor": "000", "tamanhos": ["U"], "sku": "BRI013"}}, "REGATA ANTONELLA": {"ONÇA": {"cod_cor": "038", "tamanhos": ["P", "M", "G"], "sku": "R00007"}}, "REGATA BR": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "R00003"}}, "REGATA BRA": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "R00001"}, "AMARELO": {"cod_cor": "040", "tamanhos": ["P", "M", "G"], "sku": "R00001"}}, "REGATA BRA ADIDAS - TESTE": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "R00005"}}, "REGATA BRA RECORTE - TESTE": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "R00004"}}, "REGATA DUO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "R00009"}}, "REGATA JUSTA TESTE": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "R00006"}}, "REGATA LUNA": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "R00002"}}, "REGATA ZODÍACO": {"ARIES": {"cod_cor": "073", "tamanhos": ["P", "M", "G"], "sku": "R00010"}, "GEMEOS": {"cod_cor": "072", "tamanhos": ["P", "M", "G"], "sku": "R00010"}, "LIBRA": {"cod_cor": "077", "tamanhos": ["P", "M", "G"], "sku": "R00010"}, "SAGITARIO": {"cod_cor": "079", "tamanhos": ["P", "M", "G"], "sku": "R00010"}, "LEAO": {"cod_cor": "075", "tamanhos": ["P", "M", "G"], "sku": "R00010"}, "CAPRICORNIO": {"cod_cor": "080", "tamanhos": ["P", "M", "G"], "sku": "R00010"}, "VIRGEM": {"cod_cor": "076", "tamanhos": ["P", "M", "G"], "sku": "R00010"}, "ESCORPIAO": {"cod_cor": "078", "tamanhos": ["P", "M", "G"], "sku": "R00010"}, "PEIXES": {"cod_cor": "082", "tamanhos": ["P", "M", "G"], "sku": "R00010"}, "AQUARIO": {"cod_cor": "081", "tamanhos": ["P", "M", "G"], "sku": "R00010"}, "TOURO": {"cod_cor": "071", "tamanhos": ["P", "M", "G"], "sku": "R00010"}, "CANCER": {"cod_cor": "074", "tamanhos": ["P", "M", "G"], "sku": "R00010"}}, "SAIA ALEX": {"ONÇA": {"cod_cor": "038", "tamanhos": ["P", "M", "G"], "sku": "S00016"}}, "SAIA ARIEL - INATIVO": {"OFF WHITE": {"cod_cor": "003", "tamanhos": ["P", "M", "G"], "sku": "I00081"}, "AZUL": {"cod_cor": "032", "tamanhos": ["P", "M", "G"], "sku": "I00081"}, "PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00081"}}, "SAIA BABADOS MARI": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "S00009"}}, "SAIA CAPRI": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "S00014"}}, "SAIA ILHÓS TESTE": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "S00011"}}, "SAIA LIA": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "S00005"}, "CINZA": {"cod_cor": "005", "tamanhos": ["P", "M", "G"], "sku": "S00005"}, "OFF WHITE": {"cod_cor": "003", "tamanhos": ["P", "M", "G"], "sku": "S00005"}}, "SAIA MADSON - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00083"}}, "SAIA MILA": {"ONÇA": {"cod_cor": "038", "tamanhos": ["32", "34", "36", "38", "40", "42"], "sku": "S00013"}}, "SAIA MILLI - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00082"}}, "SAIA OLÍMPIA": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "S00012"}}, "SAIA SOFIA": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00104"}, "CINZA": {"cod_cor": "005", "tamanhos": ["P", "M", "G"], "sku": "I00104"}, "MARROM": {"cod_cor": "004", "tamanhos": ["P", "M", "G"], "sku": "I00104"}}, "SAIA TULUM TESTE": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "S00010"}}, "SHORT ALFAIATARIA TESTE": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "SH0003"}}, "SHORT FITNESS - TESTE": {"MARROM": {"cod_cor": "004", "tamanhos": ["P", "M", "G"], "sku": "SH0001"}, "VERMELHO": {"cod_cor": "006", "tamanhos": ["P", "M", "G"], "sku": "SH0001"}}, "SHORT FITNESS RVB - TESTE": {"MARROM": {"cod_cor": "004", "tamanhos": ["P", "M", "G"], "sku": "SH0002"}, "VERMELHO": {"cod_cor": "006", "tamanhos": ["P", "M", "G"], "sku": "SH0002"}}, "SHORT GIULIA - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00014"}}, "SHORT SAVANA - INATIVO": {"VERDE": {"cod_cor": "034", "tamanhos": ["P", "M", "G"], "sku": "I00015"}}, "TOP ALEXA - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00029"}, "VERMELHO": {"cod_cor": "006", "tamanhos": ["P", "M", "G"], "sku": "I00029"}, "MARROM": {"cod_cor": "004", "tamanhos": ["P", "M", "G"], "sku": "I00029"}}, "TOP ALISON": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "T00063"}, "BRANCO": {"cod_cor": "002", "tamanhos": ["P", "M", "G"], "sku": "T00063"}, "MARROM": {"cod_cor": "004", "tamanhos": ["P", "M", "G"], "sku": "T00063"}}, "TOP ALISSA": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "T00090"}}, "TOP AMY": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00095"}}, "TOP AMÉLIA - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00097"}}, "TOP ANNA": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00089"}, "VERMELHO": {"cod_cor": "006", "tamanhos": ["P", "M", "G"], "sku": "I00089"}, "MARROM": {"cod_cor": "004", "tamanhos": ["P", "M", "G"], "sku": "I00089"}, "CINZA": {"cod_cor": "005", "tamanhos": ["P", "M", "G"], "sku": "I00089"}}, "TOP ARES": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "T00101"}}, "TOP ARIEL - INATIVO": {"OFF WHITE": {"cod_cor": "003", "tamanhos": ["P", "M", "G"], "sku": "I00108"}, "AZUL": {"cod_cor": "032", "tamanhos": ["P", "M", "G"], "sku": "I00108"}, "PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00108"}}, "TOP ASHLEY - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00022"}}, "TOP AURORA - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00096"}, "AMARELO": {"cod_cor": "040", "tamanhos": ["P", "M", "G"], "sku": "I00096"}}, "TOP BA - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00088"}, "VERMELHO": {"cod_cor": "006", "tamanhos": ["P", "M", "G"], "sku": "I00088"}}, "TOP BARBARA - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00085"}}, "TOP BELLY - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00037"}}, "TOP BILLIE - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00024"}}, "TOP BONNIE": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "T00064"}, "VERMELHO": {"cod_cor": "006", "tamanhos": ["P", "M", "G"], "sku": "T00064"}}, "TOP BRASIL": {"AMARELO": {"cod_cor": "040", "tamanhos": ["P", "M", "G"], "sku": "T00095"}, "PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "T00095"}}, "TOP BRIZA - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00093"}}, "TOP CAMILA - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00065"}, "CHUMBO": {"cod_cor": "009", "tamanhos": ["P", "M", "G"], "sku": "I00065"}}, "TOP CAPRI - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00064"}, "BRANCO": {"cod_cor": "002", "tamanhos": ["P", "M", "G"], "sku": "I00064"}}, "TOP CASACO KITTY - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00062"}}, "TOP CATARINA - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00105"}, "MARROM": {"cod_cor": "004", "tamanhos": ["P", "M", "G"], "sku": "I00105"}, "VERMELHO": {"cod_cor": "006", "tamanhos": ["P", "M", "G"], "sku": "I00105"}}, "TOP CECI - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00021"}}, "TOP CHIARA - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00063"}}, "TOP CLOVER": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "ZZZZZ19"}}, "TOP CORAL - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00036"}}, "TOP DUA - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00044"}}, "TOP DUNA - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00035"}}, "TOP FITNESS - TESTE": {"MARROM": {"cod_cor": "004", "tamanhos": ["P", "M", "G"], "sku": "T00099"}, "VERMELHO": {"cod_cor": "006", "tamanhos": ["P", "M", "G"], "sku": "T00099"}}, "TOP FITNESS RVB - TESTE": {"MARROM": {"cod_cor": "004", "tamanhos": ["P", "M", "G"], "sku": "T00100"}, "VERMELHO": {"cod_cor": "006", "tamanhos": ["P", "M", "G"], "sku": "T00100"}}, "TOP GABRIELA": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "T00010"}}, "TOP GRÉCIA - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00092"}}, "TOP HAILEY": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "T00078"}}, "TOP IVY - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00045"}}, "TOP KATY": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "T00059"}}, "TOP LANA": {"AMARELO": {"cod_cor": "040", "tamanhos": ["P", "M", "G"], "sku": "T00082"}, "PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "T00082"}, "VERMELHO": {"cod_cor": "006", "tamanhos": ["P", "M", "G"], "sku": "T00082"}}, "TOP LARA - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00040"}}, "TOP LILLY - INATIVO": {"VERMELHO": {"cod_cor": "006", "tamanhos": ["P", "M", "G"], "sku": "I00031"}}, "TOP LUISA - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00042"}}, "TOP MADDY - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00028"}}, "TOP MADONNA - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00034"}}, "TOP MAIA - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00020"}}, "TOP MANDI": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "T00002"}, "MARROM": {"cod_cor": "004", "tamanhos": ["P", "M", "G"], "sku": "T00002"}, "VERMELHO": {"cod_cor": "006", "tamanhos": ["P", "M", "G"], "sku": "T00002"}}, "TOP MARINA - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00106"}}, "TOP MIA": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "T00045"}, "BRANCO": {"cod_cor": "002", "tamanhos": ["P", "M", "G"], "sku": "T00045"}, "ONÇA": {"cod_cor": "038", "tamanhos": ["P", "M", "G"], "sku": "T00045"}}, "TOP MILEY - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00025"}}, "TOP MILLI - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00102"}}, "TOP NALU - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00041"}}, "TOP NATASHA - INATIVO": {"BRANCO": {"cod_cor": "002", "tamanhos": ["P", "M", "G"], "sku": "I00091"}, "PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00091"}}, "TOP OFÉLIA": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "T00047"}, "BRANCO": {"cod_cor": "002", "tamanhos": ["P", "M", "G"], "sku": "T00047"}, "ONÇA": {"cod_cor": "038", "tamanhos": ["P", "M", "G"], "sku": "T00047"}}, "TOP OLGA": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "T00015"}, "VERMELHO": {"cod_cor": "006", "tamanhos": ["P", "M", "G"], "sku": "T00015"}, "CINZA": {"cod_cor": "005", "tamanhos": ["P", "M", "G"], "sku": "T00015"}}, "TOP PIETRA": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "T00029"}, "BRANCO": {"cod_cor": "002", "tamanhos": ["P", "M", "G"], "sku": "T00029"}, "VERMELHO": {"cod_cor": "006", "tamanhos": ["P", "M", "G"], "sku": "T00029"}, "LARANJA": {"cod_cor": "007", "tamanhos": ["P", "M", "G"], "sku": "T00029"}, "ONÇA": {"cod_cor": "038", "tamanhos": ["P", "M", "G"], "sku": "T00029"}}, "TOP REGINA - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00023"}}, "TOP SABRINA": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "T00043"}}, "TOP SASHA - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00084"}, "VERMELHO": {"cod_cor": "006", "tamanhos": ["P", "M", "G"], "sku": "I00084"}}, "TOP SAVANA - INATIVO": {"VERDE": {"cod_cor": "034", "tamanhos": ["P", "M", "G"], "sku": "I00038"}}, "TOP SCARLLET - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["PP", "P", "M", "G"], "sku": "I00019"}}, "TOP SIDNEY - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00107"}}, "TOP SKIN": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "T00060"}}, "TOP SURPRESA - PNG": {"UNICA": {"cod_cor": "000", "tamanhos": ["U"], "sku": "BRI007"}}, "TOP TAKADA - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00087"}}, "TOP TAYLOR": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00090"}, "VERMELHO": {"cod_cor": "006", "tamanhos": ["P", "M", "G"], "sku": "I00090"}, "BRANCO": {"cod_cor": "002", "tamanhos": ["P", "M", "G"], "sku": "I00090"}}, "TOP TRICOT ESTRELA": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "T00076"}}, "TOP TRICOT LUCY": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "T00057"}, "CINZA": {"cod_cor": "005", "tamanhos": ["P", "M", "G"], "sku": "T00057"}, "VERMELHO": {"cod_cor": "006", "tamanhos": ["P", "M", "G"], "sku": "T00057"}}, "TOP TULUM - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00094"}, "BRANCO": {"cod_cor": "002", "tamanhos": ["P", "M", "G"], "sku": "I00094"}, "VERMELHO": {"cod_cor": "006", "tamanhos": ["P", "M", "G"], "sku": "I00094"}}, "TOP VIOLA - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00027"}}, "TOP YAS": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00103"}, "MARROM": {"cod_cor": "004", "tamanhos": ["P", "M", "G"], "sku": "I00103"}}, "TOP YASMIN - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00033"}}, "TOP YUMI - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00032"}}, "TOP ZINN - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00086"}, "MARROM": {"cod_cor": "004", "tamanhos": ["P", "M", "G"], "sku": "I00086"}}, "VESTIDO ALBA": {"PRETO": {"cod_cor": "001", "tamanhos": ["PP", "P", "M", "G"], "sku": "I00099"}, "VERMELHO": {"cod_cor": "006", "tamanhos": ["PP", "P", "M", "G"], "sku": "I00099"}, "PRATA": {"cod_cor": "008", "tamanhos": ["P", "M", "G"], "sku": "I00099"}}, "VESTIDO ALICIA": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "V00001"}, "MARROM": {"cod_cor": "004", "tamanhos": ["P", "M", "G"], "sku": "V00001"}}, "VESTIDO ANANDA - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["PP", "P", "M", "G", "GG", "XGG"], "sku": "I00066"}}, "VESTIDO ANY": {"ONÇA": {"cod_cor": "038", "tamanhos": ["P", "M", "G"], "sku": "V00032"}, "PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "V00032"}, "OFF WHITE": {"cod_cor": "003", "tamanhos": ["P", "M", "G"], "sku": "V00032"}, "VERMELHO": {"cod_cor": "006", "tamanhos": ["P", "M", "G"], "sku": "V00032"}}, "VESTIDO ANY BABADOS TESTE": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "V00033"}}, "VESTIDO ARIANA - INATIVO": {"CINZA": {"cod_cor": "005", "tamanhos": ["P", "M", "G"], "sku": "I00049"}}, "VESTIDO BELLA": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "V00010"}, "VERMELHO": {"cod_cor": "006", "tamanhos": ["P", "M", "G"], "sku": "V00010"}}, "VESTIDO BÚZIOS - INATIVO": {"BRANCO": {"cod_cor": "002", "tamanhos": ["P", "M", "G"], "sku": "I00100"}}, "VESTIDO CELINA - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00068"}, "MARROM": {"cod_cor": "004", "tamanhos": ["P", "M", "G"], "sku": "I00068"}}, "VESTIDO CLARICE- INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00050"}, "MARROM": {"cod_cor": "004", "tamanhos": ["P", "M", "G"], "sku": "I00050"}}, "VESTIDO DONATA - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00048"}, "VERMELHO": {"cod_cor": "006", "tamanhos": ["P", "M", "G"], "sku": "I00048"}}, "VESTIDO EMMA - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00098"}, "MARROM": {"cod_cor": "004", "tamanhos": ["P", "M", "G"], "sku": "I00098"}}, "VESTIDO JASMINE - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00054"}}, "VESTIDO JULIETTA": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "V00034"}}, "VESTIDO LADY - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00047"}}, "VESTIDO LIS": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "V00002"}, "MARROM": {"cod_cor": "004", "tamanhos": ["P", "M", "G"], "sku": "V00002"}}, "VESTIDO LUA": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "V00005"}}, "VESTIDO LULU - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00053"}, "AMARELO": {"cod_cor": "040", "tamanhos": ["P", "M", "G"], "sku": "I00053"}}, "VESTIDO LUNA - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00052"}}, "VESTIDO PÉROLA": {"BRANCO": {"cod_cor": "002", "tamanhos": ["P", "M", "G"], "sku": "V00016"}, "PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "V00016"}}, "VESTIDO SERENA - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["PP", "P", "M", "G", "GG", "XGG"], "sku": "I00074"}}, "VESTIDO ÍSIS - INATIVO": {"PRETO": {"cod_cor": "001", "tamanhos": ["P", "M", "G"], "sku": "I00069"}}};
+
+var usuarioLogado = '';
+var isMaster = false;
+var invAtivo = null; // {id, nome}
+var historico = [];
+
+// ── LOGIN ──────────────────────────────────────────────────
+window.addEventListener('load', function(){
+  document.getElementById('login-overlay').style.display = 'flex';
+  document.getElementById('login-user').focus();
+});
+
+function fazerLogin(){
+  var user = (document.getElementById('login-user').value||'').trim();
+  var pass = (document.getElementById('login-pass').value||'').trim();
+  if(!user||!pass){ erroLogin('Preencha usuário e senha'); return; }
+  var btn = document.getElementById('btn-login');
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span> Verificando...';
+  fetch(SCRIPT_URL+'?action=login&usuario='+encodeURIComponent(user)+'&senha='+encodeURIComponent(pass))
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.ok){
+        usuarioLogado = d.nome;
+        isMaster = d.master||false;
+        document.getElementById('login-overlay').style.display='none';
+        document.getElementById('topbar-nome').textContent='👤 '+d.nome;
+        document.getElementById('statusConn').className='status-badge badge-ok';
+        document.getElementById('statusConn').textContent='✅';
+        if(isMaster){
+          document.getElementById('btn-master').style.display='';
+        }
+        verificarInventarioAtivo();
+        carregarHistorico();
+      } else {
+        erroLogin(d.erro||'Usuário ou senha incorretos');
+        btn.disabled=false; btn.innerHTML='Entrar';
+      }
+    })
+    .catch(function(){
+      erroLogin('Erro de conexão');
+      btn.disabled=false; btn.innerHTML='Entrar';
+    });
+}
+
+function erroLogin(msg){
+  var el=document.getElementById('login-erro');
+  el.textContent='⚠️ '+msg;
+  el.style.cssText='display:block;background:var(--bad-bg);color:var(--bad-txt);border-radius:8px;padding:10px 12px;font-size:12px;font-weight:700;margin-bottom:12px;text-align:center;';
+}
+
+// ── INVENTÁRIO ─────────────────────────────────────────────
+function verificarInventarioAtivo(){
+  fetch(SCRIPT_URL+'?action=inventariosAbertos&t='+Date.now())
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var lista = d.inventarios||[];
+      // Exibe lista na aba Inventários
+      renderListaInventarios(lista);
+      // Verifica se há algum aberto
+      var abertos = lista.filter(function(i){return i.status==='ABERTO';});
+      if(abertos.length>0){
+        ativarInventario(abertos[0]);
+      } else {
+        invAtivo=null;
+        document.getElementById('sem-inventario-msg').style.display='';
+        document.getElementById('form-contar').style.display='none';
+        document.getElementById('banner-inv').style.display='none';
+        document.getElementById('inv-badge').style.display='none';
+      }
+      if(isMaster) carregarMasterInventarios();
+    })
+    .catch(function(){});
+}
+
+function ativarInventario(inv){
+  invAtivo = inv;
+  document.getElementById('sem-inventario-msg').style.display='none';
+  document.getElementById('form-contar').style.display='';
+  document.getElementById('banner-inv').style.display='';
+  document.getElementById('banner-nome-inv').textContent=inv.nome;
+  document.getElementById('inv-badge').style.display='';
+  document.getElementById('inv-badge').textContent='📋 '+inv.nome;
+}
+
+function renderListaInventarios(lista){
+  var el=document.getElementById('lista-inventarios');
+  if(!lista.length){el.innerHTML='<div class="empty"><div class="empty-icon">📊</div><p>Nenhum inventário disponível</p></div>';return;}
+  el.innerHTML=lista.map(function(inv){
+    var st=inv.status==='ABERTO'?'<span class="inv-status st-aberto">🟢 Aberto</span>':'<span class="inv-status st-fechado">🔴 Fechado</span>';
+    var isAtivo=invAtivo&&invAtivo.id===inv.id;
+    return '<div class="inv-card'+(isAtivo?' active-inv':'')+'">'+
+      '<div class="inv-nome">'+inv.nome+'</div>'+
+      '<div class="inv-meta">'+inv.lancamentos+' lançamentos · Criado em '+inv.criado+'</div>'+
+      st+'</div>';
+  }).join('');
+}
+
+// ── MASTER ─────────────────────────────────────────────────
+function carregarMasterInventarios(){
+  fetch(SCRIPT_URL+'?action=inventariosAbertos&t='+Date.now())
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var lista=d.inventarios||[];
+      var el=document.getElementById('master-lista-inv');
+      if(!lista.length){el.innerHTML='<div style="color:var(--txt-s);font-size:13px;">Nenhum inventário criado ainda</div>';return;}
+      el.innerHTML=lista.map(function(inv){
+        var st=inv.status==='ABERTO';
+        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--lav-l);">'+
+          '<div><div style="font-weight:700;font-size:13px;">'+inv.nome+'</div>'+
+          '<div style="font-size:11px;color:var(--txt-s);">'+inv.lancamentos+' lançamentos</div></div>'+
+          (st?'<button class="btn btn-sm" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;width:auto;padding:6px 14px;" data-invid="'+inv.id+'" data-invnome="'+encodeURIComponent(inv.nome)+'" onclick="finalizarInventario(this)">Finalizar</button>':'<span style="font-size:11px;color:#999;">Encerrado</span>')+
+          '</div>';
+      }).join('');
+    });
+}
+
+function criarInventario(){
+  var nome=(document.getElementById('inv-nome').value||'').trim();
+  var file=document.getElementById('inv-file').files[0];
+  if(!nome){toast('⚠️ Informe o nome do inventário');return;}
+  if(file){
+    // Lê o xlsx e extrai itens
+    var reader=new FileReader();
+    reader.onload=function(e){
+      var data=new Uint8Array(e.target.result);
+      // Usa SheetJS se disponível, senão envia sem lista
+      enviarCriarInventario(nome,[]);
+    };
+    reader.readAsArrayBuffer(file);
+  } else {
+    enviarCriarInventario(nome,[]);
+  }
+}
+
+function enviarCriarInventario(nome, itens){
+  fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({acao:'criarInventario',nome:nome,itens:itens,master:usuarioLogado})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.ok){
+        toast('✅ Inventário "'+nome+'" criado!');
+        document.getElementById('inv-nome').value='';
+        document.getElementById('inv-file').value='';
+        verificarInventarioAtivo();
+      } else {
+        toast('❌ '+d.erro);
+      }
+    });
+}
+
+function finalizarInventario(btn){
+  var id=btn.getAttribute('data-invid');
+  var nome=decodeURIComponent(btn.getAttribute('data-invnome'));
+  if(!confirm('Finalizar o inventário "'+nome+'"?\nNenhum lançamento poderá ser feito após isso.')) return;
+  fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({acao:'finalizarInventario',id:id,master:usuarioLogado})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.ok){
+        toast('✅ Inventário finalizado!');
+        verificarInventarioAtivo();
+      } else {
+        toast('❌ '+d.erro);
+      }
+    });
+}
+
+// ── PRODUTO / COR / TAMANHO ────────────────────────────────
+var produtoSelecionado = '';
+
+function filtrarProdutos(q){
+  var div=document.getElementById('produto-suggestions');
+  if(!q||q.length<2){div.style.display='none';return;}
+  var qn=q.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  var matches=Object.keys(CATALOG).filter(function(p){
+    return p.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').indexOf(qn)>=0;
+  }).slice(0,10);
+  if(!matches.length){div.style.display='none';return;}
+  div.innerHTML=matches.map(function(p){
+    return '<div data-prod="'+encodeURIComponent(p)+'" class="prod-sugg" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--lav-l);font-size:13px;font-weight:600;">'+p+'</div>';
+  }).join('');
+  div.style.display='';
+}
+
+function selecionarProduto(nome){
+  produtoSelecionado=nome;
+  document.getElementById('inp-produto').value=nome;
+  document.getElementById('produto-suggestions').style.display='none';
+  // Popula select de cores
+  var cores=Object.keys(CATALOG[nome]||{});
+  var sel=document.getElementById('sel-cor');
+  sel.innerHTML='<option value="">— selecione a cor —</option>'+
+    cores.map(function(c){return '<option value="'+c+'">'+c+'</option>';}).join('');
+  sel.disabled=false;
+  // Limpa tamanhos
+  document.getElementById('inp-tam').value='';
+  document.getElementById('tam-grid').innerHTML='<div style="font-size:12px;color:var(--txt-s);padding:8px 0;">Selecione a cor</div>';
+}
+
+function carregarTamanhos(){
+  var cor=document.getElementById('sel-cor').value;
+  document.getElementById('inp-tam').value='';
+  if(!cor||!produtoSelecionado){
+    document.getElementById('tam-grid').innerHTML='<div style="font-size:12px;color:var(--txt-s);padding:8px 0;">Selecione a cor</div>';
+    return;
+  }
+  var tamanhos=(CATALOG[produtoSelecionado][cor]||{}).tamanhos||[];
+  var grid=document.getElementById('tam-grid');
+  if(!tamanhos.length){grid.innerHTML='<div style="font-size:12px;color:var(--txt-s);">Sem tamanhos cadastrados</div>';return;}
+  grid.innerHTML=tamanhos.map(function(t){
+    return '<button type="button" class="tam-btn" data-tam="'+t+'">'+t+'</button>';
+  }).join('');
+  grid.querySelectorAll('.tam-btn').forEach(function(b){
+    b.addEventListener('click', function(){ selTam(this, this.getAttribute('data-tam')); });
+  });
+}
+
+function selTam(btn, tam){
+  document.querySelectorAll('.tam-btn').forEach(function(b){b.classList.remove('sel');});
+  btn.classList.add('sel');
+  document.getElementById('inp-tam').value=tam;
+}
+
+// ── TIPO ───────────────────────────────────────────────────
+var tipoSel='';
+function selTipo(tipo){
+  tipoSel=tipo;
+  document.getElementById('tipo-Principal').classList.toggle('selected',tipo==='Estoque Principal');
+  document.getElementById('tipo-Reserva').classList.toggle('selected',tipo==='Estoque Reserva');
+}
+
+// ── REGISTRAR ──────────────────────────────────────────────
+function registrar(){
+  if(!invAtivo){toast('⚠️ Nenhum inventário ativo');return;}
+  var produto=document.getElementById('inp-produto').value.trim();
+  var cor=document.getElementById('sel-cor').value.trim();
+  var tam=document.getElementById('inp-tam').value.trim();
+  var qtd=parseInt(document.getElementById('inp-qtd').value)||0;
+  var obs=document.getElementById('inp-obs').value.trim();
+
+  var erros=[];
+  if(!tipoSel)    erros.push('tipo de contagem');
+  if(!produto)    erros.push('modelo');
+  if(!cor)        erros.push('cor');
+  if(!tam)        erros.push('tamanho');
+  if(qtd<=0)      erros.push('quantidade');
+  if(erros.length){toast('⚠️ Preencha: '+erros.join(', '));return;}
+
+  var sku=(CATALOG[produto]&&CATALOG[produto][cor])?CATALOG[produto][cor].sku:'';
+  var cod_cor=(CATALOG[produto]&&CATALOG[produto][cor])?CATALOG[produto][cor].cod_cor:'';
+
+  var btn=document.getElementById('btn-registrar');
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span> Registrando...';
+
+  var payload={
+    acao:'contagem',
+    invId: invAtivo.id,
+    invNome: invAtivo.nome,
+    colaborador: usuarioLogado,
+    tipo: tipoSel,
+    sku: sku,
+    produto: produto,
+    cor: cor,
+    cod_cor: cod_cor,
+    tamanho: tam,
+    quantidade: qtd,
+    obs: obs
+  };
+
+  fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify(payload)})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.ok){
+        historico.unshift(payload);
+        renderHistorico();
+        toast('✅ Registrado!');
+        limparForm();
+      } else { toast('❌ '+(d.erro||'Erro')); }
+    })
+    .catch(function(){toast('❌ Erro de conexão');})
+    .finally(function(){btn.disabled=false;btn.innerHTML='Registrar Contagem';});
+}
+
+function limparForm(){
+  produtoSelecionado='';
+  document.getElementById('inp-produto').value='';
+  document.getElementById('sel-cor').innerHTML='<option value="">— selecione o modelo primeiro —</option>';
+  document.getElementById('sel-cor').disabled=true;
+  document.getElementById('tam-grid').innerHTML='<div style="font-size:12px;color:var(--txt-s);padding:8px 0;">Selecione o modelo e a cor primeiro</div>';
+  document.getElementById('inp-tam').value='';
+  document.getElementById('inp-qtd').value='';
+  document.getElementById('inp-obs').value='';
+  tipoSel='';
+  document.getElementById('tipo-Principal').classList.remove('selected');
+  document.getElementById('tipo-Reserva').classList.remove('selected');
+}
+
+// ── HISTÓRICO ──────────────────────────────────────────────
+function carregarHistorico(){
+  if(!usuarioLogado) return;
+  fetch(SCRIPT_URL+'?action=historico&colaborador='+encodeURIComponent(usuarioLogado)+'&t='+Date.now())
+    .then(function(r){return r.json();})
+    .then(function(d){ historico=d.registros||[]; renderHistorico(); })
+    .catch(function(){});
+}
+
+function renderHistorico(){
+  var el=document.getElementById('lista-historico');
+  if(!historico.length){el.innerHTML='<div class="empty"><div class="empty-icon">📋</div><p>Nenhum lançamento</p></div>';return;}
+  el.innerHTML=historico.slice(0,50).map(function(r){
+    var tc=r.tipo==='Estoque Principal'?'tipo-principal':'tipo-reserva';
+    return '<div class="reg-item">'+
+      '<div class="reg-desc">'+
+        '<strong>'+r.produto+' · '+r.cor+' · '+r.tamanho+'</strong>'+
+        '<span>'+r.invNome+'</span>'+
+        '<span class="reg-tipo '+tc+'">'+r.tipo+'</span>'+
+      '</div>'+
+      '<span class="reg-qtd">'+r.quantidade+'</span>'+
+      '</div>';
+  }).join('');
+}
+
+// ── ABAS ───────────────────────────────────────────────────
+function mudarAba(aba){
+  document.querySelectorAll('.tab-content').forEach(function(el){el.classList.remove('active');});
+  document.querySelectorAll('.menu-btn').forEach(function(el){el.classList.remove('active');});
+  document.getElementById('tab-'+aba).classList.add('active');
+  document.getElementById('btn-'+aba).classList.add('active');
+  if(aba==='inventario') verificarInventarioAtivo();
+  if(aba==='master') carregarMasterInventarios();
+  if(aba==='historico') carregarHistorico();
+}
+
+// ── TOAST ──────────────────────────────────────────────────
+function toast(msg){
+  var el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  setTimeout(function(){el.classList.remove('show');},3000);
+}
+</script>
+</body>
+</html>
