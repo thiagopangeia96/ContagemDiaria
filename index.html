@@ -184,9 +184,9 @@ body{font-family:-apple-system,"Segoe UI",sans-serif;background:var(--lav-l);col
     <div class="card-title">Produto</div>
     <div class="field">
       <label>Modelo</label>
-      <input type="text" id="inp-produto" placeholder="Digite para buscar... ex: ALISON"
-             oninput="filtrarProdutos(this.value)" autocomplete="off" autocorrect="off">
-      <div id="produto-suggestions" class="suggestions" style="display:none;"></div>
+      <select id="sel-produto" onchange="onSelecionarProduto()">
+        <option value="">— selecione o modelo —</option>
+      </select>
     </div>
     <div class="field">
       <label>Cor</label>
@@ -333,12 +333,40 @@ function irPara(pagina){
   if(pagina==='master') carregarMasterInventarios();
 }
 
+var loteSelecionado = []; // itens do lote atual
+
 function abrirContagem(inv){
   invAtivo = inv;
+  loteSelecionado = [];
   document.getElementById('inv-titulo').textContent = inv.nome;
   document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
   document.getElementById('page-contar').classList.add('active');
   limparForm();
+
+  // Carrega itens restritos do lote
+  var selProd = document.getElementById('sel-produto');
+  selProd.innerHTML = '<option value="">⏳ Carregando itens do lote...</option>';
+  selProd.disabled = true;
+
+  fetch(SCRIPT_URL+'?action=itenslote&invId='+encodeURIComponent(inv.id)+'&t='+Date.now())
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      loteSelecionado = d.itens || [];
+      // Produtos únicos do lote
+      var prods = [];
+      loteSelecionado.forEach(function(item){
+        if(prods.indexOf(item.produto)<0) prods.push(item.produto);
+      });
+      prods.sort();
+      selProd.innerHTML = '<option value="">— selecione o modelo —</option>'+
+        prods.map(function(p){ return '<option value="'+p+'">'+p+'</option>'; }).join('');
+      selProd.disabled = false;
+    })
+    .catch(function(){
+      selProd.innerHTML = '<option value="">❌ Erro ao carregar — tente atualizar</option>';
+      selProd.disabled = false;
+    });
+
   carregarHistoricoInv();
 }
 
@@ -474,36 +502,24 @@ function normCor(c){
 
 var produtoSelecionado = '';
 
-function filtrarProdutos(q){
-  var div = document.getElementById('produto-suggestions');
-  if(!q||q.length<1){ div.style.display='none'; return; }
-  var qn = q.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  var matches = Object.keys(CATALOG).filter(function(p){
-    return p.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').indexOf(qn)>=0;
-  }).slice(0,12);
-  if(!matches.length){ div.style.display='none'; return; }
-  div.innerHTML = matches.map(function(p){
-    return '<div class="sugg-item" data-prod="'+encodeURIComponent(p)+'">'+p+'</div>';
-  }).join('');
-  div.querySelectorAll('.sugg-item').forEach(function(el){
-    el.addEventListener('click', function(){
-      selecionarProduto(decodeURIComponent(this.getAttribute('data-prod')));
-    });
-  });
-  div.style.display = '';
-}
-
-function selecionarProduto(nome){
-  produtoSelecionado = nome;
-  document.getElementById('inp-produto').value = nome;
-  document.getElementById('produto-suggestions').style.display = 'none';
-  var cores = Object.keys(CATALOG[nome]||{});
-  var sel = document.getElementById('sel-cor');
-  sel.innerHTML = '<option value="">— selecione a cor —</option>'+
-    cores.map(function(c){ return '<option value="'+c+'">'+normCor(c)+'</option>'; }).join('');
-  sel.disabled = false;
+function onSelecionarProduto(){
+  var prod = document.getElementById('sel-produto').value;
+  produtoSelecionado = prod;
   document.getElementById('inp-tam').value = '';
   document.getElementById('tam-grid').innerHTML = '<div style="font-size:12px;color:var(--txt-s);padding:8px 0;">Selecione a cor</div>';
+
+  var selCor = document.getElementById('sel-cor');
+  if(!prod){ selCor.innerHTML='<option value="">— selecione o modelo primeiro —</option>'; selCor.disabled=true; return; }
+
+  // Cores disponíveis para este produto no lote
+  var cores = [];
+  loteSelecionado.forEach(function(item){
+    if(item.produto === prod && cores.indexOf(item.cor)<0) cores.push(item.cor);
+  });
+  cores.sort();
+  selCor.innerHTML = '<option value="">— selecione a cor —</option>'+
+    cores.map(function(c){ return '<option value="'+c+'">'+c+'</option>'; }).join('');
+  selCor.disabled = false;
 }
 
 function carregarTamanhos(){
@@ -513,9 +529,15 @@ function carregarTamanhos(){
     document.getElementById('tam-grid').innerHTML='<div style="font-size:12px;color:var(--txt-s);padding:8px 0;">Selecione a cor</div>';
     return;
   }
-  var tamanhos = (CATALOG[produtoSelecionado][cor]||{}).tamanhos||[];
+  // Tamanhos disponíveis para este produto+cor no lote
+  var tamanhos = [];
+  loteSelecionado.forEach(function(item){
+    if(item.produto === produtoSelecionado && item.cor === cor && tamanhos.indexOf(item.tamanho)<0){
+      tamanhos.push(item.tamanho);
+    }
+  });
   var grid = document.getElementById('tam-grid');
-  if(!tamanhos.length){ grid.innerHTML='<div style="font-size:12px;color:var(--txt-s);">Sem tamanhos cadastrados</div>'; return; }
+  if(!tamanhos.length){ grid.innerHTML='<div style="font-size:12px;color:var(--txt-s);">Sem tamanhos no lote</div>'; return; }
   grid.innerHTML = tamanhos.map(function(t){
     return '<button type="button" class="tam-btn" data-tam="'+t+'">'+t+'</button>';
   }).join('');
@@ -539,7 +561,7 @@ function selTipo(tipo){
 // ── REGISTRAR ──────────────────────────────────────────────
 function registrar(){
   if(!invAtivo){ toast('⚠️ Nenhum inventário ativo'); return; }
-  var produto = document.getElementById('inp-produto').value.trim();
+  var produto = document.getElementById('sel-produto').value.trim();
   var cor     = document.getElementById('sel-cor').value.trim();
   var tam     = document.getElementById('inp-tam').value.trim();
   var qtd     = parseInt(document.getElementById('inp-qtd').value)||0;
@@ -553,14 +575,17 @@ function registrar(){
   if(qtd<=0)    erros.push('quantidade');
   if(erros.length){ toast('⚠️ Preencha: '+erros.join(', ')); return; }
 
-  var corNorm = normCor(cor);
-  var catItem = (CATALOG[produto]&&(CATALOG[produto][cor]||CATALOG[produto][corNorm]))||{};
+  // SKU vem do lote
+  var loteItem = null;
+  loteSelecionado.forEach(function(item){
+    if(item.produto===produto && item.cor===cor && item.tamanho===tam) loteItem=item;
+  });
   var payload = {
     acao:'contagem', invId:invAtivo.id, invNome:invAtivo.nome,
     colaborador:usuarioLogado, tipo:tipoSel,
-    sku:catItem.sku||'', produto:produto, cor:corNorm,
-    cod_cor:catItem.cod_cor||cor.split('-')[0].trim(),
-    tamanho:tam, quantidade:qtd, obs:obs
+    sku: loteItem ? loteItem.sku : '',
+    produto:produto, cor:cor, tamanho:tam,
+    quantidade:qtd, obs:obs
   };
 
   var btn = document.getElementById('btn-registrar');
@@ -586,7 +611,7 @@ function registrar(){
 
 function limparForm(){
   produtoSelecionado='';
-  document.getElementById('inp-produto').value='';
+  var sp=document.getElementById('sel-produto'); if(sp) sp.value='';
   document.getElementById('sel-cor').innerHTML='<option value="">— selecione o modelo primeiro —</option>';
   document.getElementById('sel-cor').disabled=true;
   document.getElementById('tam-grid').innerHTML='<div style="font-size:12px;color:var(--txt-s);padding:8px 0;">Selecione o modelo e a cor primeiro</div>';
