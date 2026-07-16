@@ -119,6 +119,7 @@ body{font-family:-apple-system,'Segoe UI',sans-serif;background:var(--lav-l);col
 .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg)}}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -264,6 +265,11 @@ body{font-family:-apple-system,'Segoe UI',sans-serif;background:var(--lav-l);col
       <div class="field"><label>Nome do inventário</label>
         <input type="text" id="inv-nome" placeholder="Ex: Inventário Loja Jul/2026">
       </div>
+      <div style="margin-bottom:10px;">
+        <button type="button" onclick="baixarModelo()" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#fff;color:var(--roxo);border:1.5px solid var(--roxo);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">
+          ⬇️ Baixar planilha modelo
+        </button>
+      </div>
       <div class="field"><label>Upload da lista de itens (.xlsx)</label>
         <input type="file" id="inv-file" accept=".xlsx" style="padding:8px 0;font-size:13px;">
         <div style="font-size:10px;color:var(--txt-s);margin-top:4px;">Colunas esperadas: SKU · PRODUTO · COR · TAMANHO</div>
@@ -403,13 +409,31 @@ function criarInventario(){
   var nome=(document.getElementById('inv-nome').value||'').trim();
   var file=document.getElementById('inv-file').files[0];
   if(!nome){toast('⚠️ Informe o nome do inventário');return;}
+
   if(file){
-    // Lê o xlsx e extrai itens
     var reader=new FileReader();
     reader.onload=function(e){
-      var data=new Uint8Array(e.target.result);
-      // Usa SheetJS se disponível, senão envia sem lista
-      enviarCriarInventario(nome,[]);
+      try{
+        var wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
+        var ws = wb.Sheets[wb.SheetNames[0]];
+        var rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+
+        var itens = rows.map(function(r){
+          // Aceita variações de nome de coluna: Código/SKU, Descrição/PRODUTO, Cor/COR, Tam/TAMANHO
+          var sku     = (r['Código']||r['SKU']||r['CODIGO']||r['sku']||'').toString().trim();
+          var produto = (r['Descrição']||r['PRODUTO']||r['Descricao']||r['produto']||'').toString().trim();
+          var cor     = (r['Cor']||r['COR']||r['cor']||'').toString().trim();
+          var tam     = (r['Tam']||r['TAMANHO']||r['Tamanho']||r['tam']||'').toString().trim();
+          if(!sku && !produto) return null;
+          return {sku:sku, produto:produto, cor:normCor(cor), cod_cor:cor.split(' - ')[0].trim(), tamanho:tam};
+        }).filter(Boolean);
+
+        if(!itens.length){toast('⚠️ Nenhum item encontrado no arquivo');return;}
+        toast('📋 '+itens.length+' itens lidos...');
+        enviarCriarInventario(nome, itens);
+      } catch(err){
+        toast('❌ Erro ao ler arquivo: '+err.message);
+      }
     };
     reader.readAsArrayBuffer(file);
   } else {
@@ -473,7 +497,10 @@ function selecionarProduto(nome){
   var cores=Object.keys(CATALOG[nome]||{});
   var sel=document.getElementById('sel-cor');
   sel.innerHTML='<option value="">— selecione a cor —</option>'+
-    cores.map(function(c){return '<option value="'+c+'">'+c+'</option>';}).join('');
+    cores.map(function(c){
+      var label = normCor(c); // exibe só o nome, ex: "PRETO"
+      return '<option value="'+c+'">'+label+'</option>';
+    }).join('');
   sel.disabled=false;
   // Limpa tamanhos
   document.getElementById('inp-tam').value='';
@@ -529,8 +556,13 @@ function registrar(){
   if(qtd<=0)      erros.push('quantidade');
   if(erros.length){toast('⚠️ Preencha: '+erros.join(', '));return;}
 
-  var sku=(CATALOG[produto]&&CATALOG[produto][cor])?CATALOG[produto][cor].sku:'';
-  var cod_cor=(CATALOG[produto]&&CATALOG[produto][cor])?CATALOG[produto][cor].cod_cor:'';
+  // Normalize cor for catalog lookup (handles "001 - PRETO" format)
+  var corNorm = normCor(cor);
+  var sku=(CATALOG[produto]&&(CATALOG[produto][cor]||CATALOG[produto][corNorm]))?
+    (CATALOG[produto][cor]||CATALOG[produto][corNorm]).sku:'';
+  var cod_cor_val=(CATALOG[produto]&&(CATALOG[produto][cor]||CATALOG[produto][corNorm]))?
+    (CATALOG[produto][cor]||CATALOG[produto][corNorm]).cod_cor:'';
+  // cod_cor already set above via corNorm
 
   var btn=document.getElementById('btn-registrar');
   btn.disabled=true; btn.innerHTML='<span class="spinner"></span> Registrando...';
@@ -544,7 +576,7 @@ function registrar(){
     sku: sku,
     produto: produto,
     cor: cor,
-    cod_cor: cod_cor,
+    cod_cor: cod_cor_val,
     tamanho: tam,
     quantidade: qtd,
     obs: obs
@@ -619,6 +651,19 @@ function toast(msg){
   var el=document.getElementById('toast');
   el.textContent=msg; el.classList.add('show');
   setTimeout(function(){el.classList.remove('show');},3000);
+}
+
+// ── DOWNLOAD MODELO ────────────────────────────────────────
+function baixarModelo(){
+  var b64 = "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";
+  var bin = atob(b64);
+  var buf = new Uint8Array(bin.length);
+  for(var i=0;i<bin.length;i++) buf[i]=bin.charCodeAt(i);
+  var blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'modelo_lista_contagem.xlsx';
+  a.click();
 }
 </script>
 </body>
