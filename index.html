@@ -480,14 +480,14 @@ function registrarLivre(){
   if(qtd<=0)        erros.push('quantidade');
   if(erros.length){ toast('⚠️ Preencha: '+erros.join(', ')); return; }
 
-  var eanKey = produto+'|||'+normCor(cor)+'|||'+tam;
+  var eanKey = produto+'|||'+cor+'|||'+tam;
   var eanInfo = EAN_MAP[eanKey] || {};
 
   var payload = {
     acao:'contagem', invId:'LIVRE', invNome:'CONTAGEM LIVRE',
     colaborador:usuarioLogado, tipo:tipoLivreSel,
     sku:eanInfo.sku||'', ean:eanInfo.ean||'',
-    produto:produto, cor:normCor(cor), tamanho:tam,
+    produto:produto, cor:cor, tamanho:tam,
     quantidade:qtd, obs:obs
   };
 
