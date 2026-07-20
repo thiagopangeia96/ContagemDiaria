@@ -170,12 +170,15 @@ body{font-family:-apple-system,"Segoe UI",sans-serif;background:var(--lav-l);col
 
   <div class="card">
     <div class="card-title">Tipo de Contagem</div>
-    <div class="tipo-grid">
+    <div class="tipo-grid" style="grid-template-columns:repeat(3,1fr);">
       <button class="tipo-btn" onclick="selTipo('Estoque Principal')" id="tipo-Principal">
         <span class="tipo-icon">🏪</span>Estoque Principal
       </button>
       <button class="tipo-btn" onclick="selTipo('Estoque Reserva')" id="tipo-Reserva">
         <span class="tipo-icon">📦</span>Estoque Reserva
+      </button>
+      <button class="tipo-btn" onclick="selTipo('Marketplace')" id="tipo-Marketplace">
+        <span class="tipo-icon">🛒</span>Marketplace
       </button>
     </div>
   </div>
@@ -200,6 +203,18 @@ body{font-family:-apple-system,"Segoe UI",sans-serif;background:var(--lav-l);col
         <div style="font-size:12px;color:var(--txt-s);padding:8px 0;">Selecione o modelo e a cor primeiro</div>
       </div>
       <input type="hidden" id="inp-tam">
+    </div>
+    <div class="field" style="margin-top:4px;">
+      <label>Localização <span style="font-size:10px;font-weight:400;color:var(--txt-s)">ex: A1 até A3</span></label>
+      <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;">
+        <input type="text" id="inp-loc-ini" placeholder="A1" maxlength="4"
+               style="text-transform:uppercase;text-align:center;font-weight:700;font-size:16px;"
+               oninput="this.value=this.value.toUpperCase()">
+        <span style="font-size:13px;font-weight:700;color:var(--txt-s);text-align:center;">até</span>
+        <input type="text" id="inp-loc-fim" placeholder="A3" maxlength="4"
+               style="text-transform:uppercase;text-align:center;font-weight:700;font-size:16px;"
+               oninput="this.value=this.value.toUpperCase()">
+      </div>
     </div>
   </div>
 
@@ -260,6 +275,14 @@ body{font-family:-apple-system,"Segoe UI",sans-serif;background:var(--lav-l);col
   </div>
 </div>
 
+<!-- PAGE: RESUMO INVENTÁRIO -->
+<div class="page" id="page-resumo">
+  <button class="back-btn" onclick="irPara('master')">← Painel Master</button>
+  <div id="resumo-content">
+    <div class="empty"><div class="empty-icon">📊</div><p>Carregando...</p></div>
+  </div>
+</div>
+
 <!-- BOTTOM NAV (só após login) -->
 <div id="bottom-nav" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1.5px solid var(--brd);z-index:90;">
   <div style="display:flex;max-width:800px;margin:0 auto;">
@@ -284,12 +307,15 @@ body{font-family:-apple-system,"Segoe UI",sans-serif;background:var(--lav-l);col
 
   <div class="card">
     <div class="card-title">Tipo de Contagem</div>
-    <div class="tipo-grid">
+    <div class="tipo-grid" style="grid-template-columns:repeat(3,1fr);">
       <button class="tipo-btn" onclick="selTipoLivre('Estoque Principal')" id="tipoL-Principal">
         <span class="tipo-icon">🏪</span>Estoque Principal
       </button>
       <button class="tipo-btn" onclick="selTipoLivre('Estoque Reserva')" id="tipoL-Reserva">
         <span class="tipo-icon">📦</span>Estoque Reserva
+      </button>
+      <button class="tipo-btn" onclick="selTipoLivre('Marketplace')" id="tipoL-Marketplace">
+        <span class="tipo-icon">🛒</span>Marketplace
       </button>
     </div>
   </div>
@@ -314,6 +340,18 @@ body{font-family:-apple-system,"Segoe UI",sans-serif;background:var(--lav-l);col
         <div style="font-size:12px;color:var(--txt-s);padding:8px 0;">Selecione o modelo e a cor primeiro</div>
       </div>
       <input type="hidden" id="livre-tam">
+    </div>
+    <div class="field" style="margin-top:4px;">
+      <label>Localização <span style="font-size:10px;font-weight:400;color:var(--txt-s)">ex: A1 até A3</span></label>
+      <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;">
+        <input type="text" id="livre-loc-ini" placeholder="A1" maxlength="4"
+               style="text-transform:uppercase;text-align:center;font-weight:700;font-size:16px;"
+               oninput="this.value=this.value.toUpperCase()">
+        <span style="font-size:13px;font-weight:700;color:var(--txt-s);text-align:center;">até</span>
+        <input type="text" id="livre-loc-fim" placeholder="A3" maxlength="4"
+               style="text-transform:uppercase;text-align:center;font-weight:700;font-size:16px;"
+               oninput="this.value=this.value.toUpperCase()">
+      </div>
     </div>
   </div>
 
@@ -412,6 +450,7 @@ function selTipoLivre(tipo){
   tipoLivreSel = tipo;
   document.getElementById('tipoL-Principal').classList.toggle('selected', tipo==='Estoque Principal');
   document.getElementById('tipoL-Reserva').classList.toggle('selected', tipo==='Estoque Reserva');
+  document.getElementById('tipoL-Marketplace').classList.toggle('selected', tipo==='Marketplace');
 }
 
 function filtrarProdutosLivres(q){
@@ -451,6 +490,12 @@ function carregarTamanhosLivres(){
     return;
   }
   var tamanhos = (CATALOG[produtoLivreSel][cor]||{}).tamanhos||[];
+  var ORDEM_TAM2 = ['PP','P','M','G','GG','XGG','U','UNICO','32','34','36','38','40','42','44','46'];
+  tamanhos = tamanhos.slice().sort(function(a,b){
+    var ia = ORDEM_TAM2.indexOf(a.toUpperCase()); if(ia<0) ia=999;
+    var ib = ORDEM_TAM2.indexOf(b.toUpperCase()); if(ib<0) ib=999;
+    return ia!==ib ? ia-ib : a.localeCompare(b);
+  });
   var grid = document.getElementById('livre-tam-grid');
   if(!tamanhos.length){ grid.innerHTML='<div style="font-size:12px;color:var(--txt-s);">Sem tamanhos cadastrados</div>'; return; }
   grid.innerHTML = tamanhos.map(function(t){
@@ -478,9 +523,15 @@ function registrarLivre(){
   if(!cor)          erros.push('cor');
   if(!tam)          erros.push('tamanho');
   if(qtd<=0)        erros.push('quantidade');
+  var locIniL2 = document.getElementById('livre-loc-ini').value.trim();
+  var locFimL2 = document.getElementById('livre-loc-fim').value.trim();
+  if(!locIniL2||!locFimL2) erros.push('localização (inicial e final)');
   if(erros.length){ toast('⚠️ Preencha: '+erros.join(', ')); return; }
 
-  var eanKey = produto+'|||'+cor+'|||'+tam;
+  var locIniL = document.getElementById('livre-loc-ini').value.trim().toUpperCase();
+  var locFimL = document.getElementById('livre-loc-fim').value.trim().toUpperCase();
+  var localizacaoL = locIniL && locFimL ? locIniL+'-'+locFimL : locIniL || locFimL || '';
+  var eanKey = produto+'||||'+cor+'||||'+tam;
   var eanInfo = EAN_MAP[eanKey] || {};
 
   var payload = {
@@ -488,6 +539,7 @@ function registrarLivre(){
     colaborador:usuarioLogado, tipo:tipoLivreSel,
     sku:eanInfo.sku||'', ean:eanInfo.ean||'',
     produto:produto, cor:cor, tamanho:tam,
+    localizacao: localizacaoL,
     quantidade:qtd, obs:obs
   };
 
@@ -628,20 +680,67 @@ function renderMasterInventarios(lista){
   el.innerHTML = lista.map(function(inv){
     var aberto = inv.status === 'ABERTO';
     return '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--lav-l);">'+
-      '<div><div style="font-weight:700;font-size:13px;">'+inv.nome+'</div>'+
+      '<div style="flex:1;"><div style="font-weight:700;font-size:13px;">'+inv.nome+'</div>'+
       '<div style="font-size:11px;color:var(--txt-s);">'+inv.lancamentos+' lançamentos · '+inv.criado+'</div>'+
       '<span class="inv-status '+(aberto?'st-aberto':'st-fechado')+'">'+
         (aberto?'🟢 Aberto':'🔴 Encerrado')+'</span></div>'+
-      (aberto?'<button class="btn btn-danger btn-sm" data-finv-id="'+inv.id+'" data-finv-nome="'+encodeURIComponent(inv.nome)+'">Finalizar</button>':'<span></span>')+
+      (aberto
+        ? '<button class="btn btn-danger btn-sm" data-finv-id="'+inv.id+'" data-finv-nome="'+encodeURIComponent(inv.nome)+'">Finalizar</button>'
+        : '<button class="btn btn-secondary btn-sm" data-resumo-id="'+inv.id+'" data-resumo-nome="'+encodeURIComponent(inv.nome)+'">📊 Ver resumo</button>'
+      )+
       '</div>';
   }).join('');
   el.querySelectorAll('[data-finv-id]').forEach(function(btn){
     btn.addEventListener('click', function(){
-      var id = this.getAttribute('data-finv-id');
-      var nome = decodeURIComponent(this.getAttribute('data-finv-nome'));
-      finalizarInventario(id, nome);
+      finalizarInventario(this.getAttribute('data-finv-id'), decodeURIComponent(this.getAttribute('data-finv-nome')));
     });
   });
+  el.querySelectorAll('[data-resumo-id]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      abrirResumo(this.getAttribute('data-resumo-id'), decodeURIComponent(this.getAttribute('data-resumo-nome')));
+    });
+  });
+}
+
+function abrirResumo(invId, invNome){
+  document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
+  document.getElementById('page-resumo').classList.add('active');
+  var el = document.getElementById('resumo-content');
+  el.innerHTML = '<div class="empty"><div class="empty-icon">⏳</div><p>Carregando resumo...</p></div>';
+  fetch(SCRIPT_URL+'?action=resumoInventario&invId='+encodeURIComponent(invId)+'&t='+Date.now())
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(!d.ok){ el.innerHTML='<div class="empty"><div class="empty-icon">❌</div><p>'+d.erro+'</p></div>'; return; }
+      var duracaoMin = Math.round(d.duracaoSeg/60);
+      var duracaoStr = duracaoMin>=60 ? Math.floor(duracaoMin/60)+'h '+(duracaoMin%60)+'min' : duracaoMin+'min';
+      var html = '<div style="background:linear-gradient(135deg,var(--roxo),var(--roxo-esc));border-radius:14px;padding:16px;margin-bottom:14px;">'+
+        '<div style="font-size:11px;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.06em;">Resumo do Inventário</div>'+
+        '<div style="font-size:18px;font-weight:800;color:#fff;margin-top:4px;">'+invNome+'</div></div>';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">';
+      [['🕐','Início',d.inicio],['🕑','Fim',d.fim],['⏱️','Duração',duracaoStr],
+       ['📦','SKUs únicos',d.totalSkus],['🔢','Total peças',d.totalPecas.toLocaleString('pt-BR')],
+       ['👥','Colaboradores',d.totalColabs+' pessoas']].forEach(function(m){
+        html += '<div style="background:#fff;border-radius:12px;border:1px solid var(--brd);padding:12px;text-align:center;">'+
+          '<div style="font-size:18px;">'+m[0]+'</div>'+
+          '<div style="font-size:10px;font-weight:700;color:var(--txt-s);text-transform:uppercase;margin:3px 0;">'+m[1]+'</div>'+
+          '<div style="font-size:14px;font-weight:800;color:var(--txt);">'+m[2]+'</div></div>';
+      });
+      html += '</div>';
+      html += '<div class="card"><div class="card-title">Participação por colaborador</div>';
+      d.colaboradores.forEach(function(c){
+        html += '<div style="margin-bottom:12px;">'+
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">'+
+            '<span style="font-weight:700;font-size:13px;">👤 '+c.nome+'</span>'+
+            '<span style="font-size:11px;color:var(--txt-s);">'+c.lancamentos+' lanç · '+c.pecas.toLocaleString('pt-BR')+' pç</span>'+
+          '</div>'+
+          '<div style="background:var(--lav-l);border-radius:20px;height:8px;">'+
+            '<div style="background:var(--roxo);border-radius:20px;height:8px;width:'+c.pct+'%;"></div></div>'+
+          '<div style="font-size:11px;color:var(--roxo);font-weight:700;margin-top:2px;">'+c.pct+'% dos lançamentos</div></div>';
+      });
+      html += '</div>';
+      el.innerHTML = html;
+    })
+    .catch(function(){ el.innerHTML='<div class="empty"><div class="empty-icon">❌</div><p>Erro ao carregar resumo</p></div>'; });
 }
 
 function criarInventario(){
@@ -746,8 +845,16 @@ function carregarTamanhos(){
       tamanhos.push(item.tamanho);
     }
   });
+  var ORDEM_TAM = ['PP','P','M','G','GG','XGG','U','UNICO','32','34','36','38','40','42','44','46'];
+  tamanhos.sort(function(a,b){
+    var ia = ORDEM_TAM.indexOf(a.toUpperCase());
+    var ib = ORDEM_TAM.indexOf(b.toUpperCase());
+    if(ia<0) ia = 999;
+    if(ib<0) ib = 999;
+    if(ia !== ib) return ia - ib;
+    return a.localeCompare(b);
+  });
   var grid = document.getElementById('tam-grid');
-  if(!tamanhos.length){ grid.innerHTML='<div style="font-size:12px;color:var(--txt-s);">Sem tamanhos no lote</div>'; return; }
   grid.innerHTML = tamanhos.map(function(t){
     return '<button type="button" class="tam-btn" data-tam="'+t+'">'+t+'</button>';
   }).join('');
@@ -764,8 +871,13 @@ function carregarTamanhos(){
 var tipoSel = '';
 function selTipo(tipo){
   tipoSel = tipo;
+  ['Principal','Reserva','Marketplace'].forEach(function(t){
+    var el = document.getElementById('tipo-'+t);
+    if(el) el.classList.toggle('selected', 'Estoque '+t===tipo || t===tipo || ('Marketplace'===tipo && t==='Marketplace'));
+  });
   document.getElementById('tipo-Principal').classList.toggle('selected', tipo==='Estoque Principal');
   document.getElementById('tipo-Reserva').classList.toggle('selected', tipo==='Estoque Reserva');
+  document.getElementById('tipo-Marketplace').classList.toggle('selected', tipo==='Marketplace');
 }
 
 // ── REGISTRAR ──────────────────────────────────────────────
@@ -783,6 +895,9 @@ function registrar(){
   if(!cor)      erros.push('cor');
   if(!tam)      erros.push('tamanho');
   if(qtd<=0)    erros.push('quantidade');
+  var locIni2 = document.getElementById('inp-loc-ini').value.trim();
+  var locFim2 = document.getElementById('inp-loc-fim').value.trim();
+  if(!locIni2||!locFim2) erros.push('localização (inicial e final)');
   if(erros.length){ toast('⚠️ Preencha: '+erros.join(', ')); return; }
 
   // SKU e EAN vêm do lote + EAN_MAP
@@ -792,12 +907,17 @@ function registrar(){
   });
   var eanKey = produto+'|||'+cor+'|||'+tam;
   var eanInfo = EAN_MAP[eanKey] || {};
+  var locIni = document.getElementById('inp-loc-ini').value.trim().toUpperCase();
+  var locFim = document.getElementById('inp-loc-fim').value.trim().toUpperCase();
+  var localizacao = locIni && locFim ? locIni+'-'+locFim : locIni || locFim || '';
+
   var payload = {
     acao:'contagem', invId:invAtivo.id, invNome:invAtivo.nome,
     colaborador:usuarioLogado, tipo:tipoSel,
     sku: loteItem ? loteItem.sku : (eanInfo.sku||''),
     ean: eanInfo.ean || '',
     produto:produto, cor:cor, tamanho:tam,
+    localizacao: localizacao,
     quantidade:qtd, obs:obs
   };
 
@@ -859,9 +979,12 @@ function limparForm(){
   document.getElementById('inp-tam').value='';
   document.getElementById('inp-qtd').value='';
   document.getElementById('inp-obs').value='';
+  document.getElementById('inp-loc-ini').value='';
+  document.getElementById('inp-loc-fim').value='';
   tipoSel='';
   document.getElementById('tipo-Principal').classList.remove('selected');
   document.getElementById('tipo-Reserva').classList.remove('selected');
+  document.getElementById('tipo-Marketplace').classList.remove('selected');
 }
 
 // ── HISTÓRICO DO INVENTÁRIO ────────────────────────────────
