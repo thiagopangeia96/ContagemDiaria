@@ -926,6 +926,7 @@ function registrar(){
   // Verifica duplicata em paralelo com o envio — não bloqueia no 3G
   // Script retorna aviso no response se for duplicata
   enviarContagem(payload, btn);
+}
 
 function enviarContagem(payload, btn){
   btn.disabled=true; btn.innerHTML='<span class="spinner"></span> Registrando...';
@@ -949,7 +950,6 @@ function enviarContagem(payload, btn){
       limparForm();
     })
     .finally(function(){ btn.disabled=false; btn.innerHTML='Registrar Contagem'; });
-}
 }
 
 function limparForm(){
