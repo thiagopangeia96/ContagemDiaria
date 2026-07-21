@@ -187,9 +187,14 @@ body{font-family:-apple-system,"Segoe UI",sans-serif;background:var(--lav-l);col
     <div class="card-title">Produto</div>
     <div class="field">
       <label>Modelo</label>
-      <select id="sel-produto" onchange="onSelecionarProduto()">
-        <option value="">— selecione o modelo —</option>
-      </select>
+      <div style="position:relative;">
+        <input type="text" id="inp-busca-produto" placeholder="Digite para buscar... ex: PEROL"
+               oninput="filtrarProdutosLote(this.value)" autocomplete="off" autocorrect="off"
+               onfocus="filtrarProdutosLote(this.value)"
+               style="width:100%;padding:11px 14px;border:1.5px solid var(--brd);border-radius:10px;font-size:14px;font-family:inherit;outline:none;color:var(--txt);background:#fff;">
+        <div id="prod-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--brd);border-top:none;border-radius:0 0 10px 10px;max-height:200px;overflow-y:auto;z-index:200;box-shadow:0 4px 12px rgba(0,0,0,.1);"></div>
+      </div>
+      <input type="hidden" id="sel-produto">
     </div>
     <div class="field">
       <label>Cor</label>
@@ -591,6 +596,59 @@ function carregarHistLivre(){
 
 var loteSelecionado = []; // itens do lote atual
 
+function norm(s){
+  return (s||'').toString().toUpperCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+}
+
+function filtrarProdutosLote(q){
+  var div = document.getElementById('prod-dropdown');
+  // Produtos únicos do lote
+  var prods = [];
+  loteSelecionado.forEach(function(item){
+    if(prods.indexOf(item.produto)<0) prods.push(item.produto);
+  });
+  prods.sort();
+
+  // Filtra por qualquer parte do nome, sem acento, sem ordem
+  var qn = norm(q);
+  var filtered = q.length === 0 ? prods : prods.filter(function(p){
+    return norm(p).indexOf(qn) >= 0;
+  });
+
+  if(!filtered.length){ div.style.display='none'; return; }
+
+  div.innerHTML = filtered.map(function(p){
+    var pn = norm(p);
+    var start = qn ? pn.indexOf(qn) : -1;
+    var label = p;
+    if(start >= 0 && qn){
+      label = p.substring(0,start)+'<strong>'+p.substring(start,start+qn.length)+'</strong>'+p.substring(start+qn.length);
+    }
+    return '<div data-val="'+encodeURIComponent(p)+'" class="prod-drop-item" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--lav-l);font-size:13px;">'+label+'</div>';
+  }).join('');
+  div.querySelectorAll('.prod-drop-item').forEach(function(el){
+    el.addEventListener('mousedown', function(){ selecionarProdutoLote(decodeURIComponent(this.getAttribute('data-val'))); });
+    el.addEventListener('mouseover', function(){ this.style.background='var(--lav-l)'; });
+    el.addEventListener('mouseout',  function(){ this.style.background=''; });
+  });
+  div.style.display = '';
+}
+
+function selecionarProdutoLote(nome){
+  document.getElementById('inp-busca-produto').value = nome;
+  document.getElementById('sel-produto').value = nome;
+  document.getElementById('prod-dropdown').style.display = 'none';
+  onSelecionarProduto();
+}
+
+// Fecha dropdown ao clicar fora
+document.addEventListener('click', function(e){
+  var inp = document.getElementById('inp-busca-produto');
+  var div = document.getElementById('prod-dropdown');
+  if(inp && div && e.target !== inp) div.style.display = 'none';
+});
+
 function abrirContagem(inv){
   invAtivo = inv;
   loteSelecionado = [];
@@ -601,8 +659,9 @@ function abrirContagem(inv){
 
   // Carrega itens restritos do lote
   var selProd = document.getElementById('sel-produto');
-  selProd.innerHTML = '<option value="">⏳ Carregando itens do lote...</option>';
-  selProd.disabled = true;
+  selProd.value = '';
+  var ibp = document.getElementById('inp-busca-produto');
+  if(ibp){ ibp.value=''; ibp.placeholder='⏳ Carregando itens do lote...'; ibp.disabled=true; }
 
   fetch(SCRIPT_URL+'?action=itenslote&invId='+encodeURIComponent(inv.id)+'&t='+Date.now())
     .then(function(r){ return r.json(); })
@@ -614,9 +673,8 @@ function abrirContagem(inv){
         if(prods.indexOf(item.produto)<0) prods.push(item.produto);
       });
       prods.sort();
-      selProd.innerHTML = '<option value="">— selecione o modelo —</option>'+
-        prods.map(function(p){ return '<option value="'+p+'">'+p+'</option>'; }).join('');
-      selProd.disabled = false;
+      var ibp2 = document.getElementById('inp-busca-produto');
+      if(ibp2){ ibp2.placeholder='Digite para buscar...'; ibp2.disabled=false; ibp2.value=''; }
     })
     .catch(function(){
       selProd.innerHTML = '<option value="">❌ Erro ao carregar — tente atualizar</option>';
@@ -812,6 +870,7 @@ var produtoSelecionado = '';
 
 function onSelecionarProduto(){
   var prod = document.getElementById('sel-produto').value;
+  if(!prod) return;
   produtoSelecionado = prod;
   document.getElementById('inp-tam').value = '';
   document.getElementById('tam-grid').innerHTML = '<div style="font-size:12px;color:var(--txt-s);padding:8px 0;">Selecione a cor</div>';
@@ -955,6 +1014,8 @@ function enviarContagem(payload, btn){
 function limparForm(){
   produtoSelecionado='';
   var sp=document.getElementById('sel-produto'); if(sp) sp.value='';
+  var ib=document.getElementById('inp-busca-produto'); if(ib) ib.value='';
+  var dd=document.getElementById('prod-dropdown'); if(dd) dd.style.display='none';
   document.getElementById('sel-cor').innerHTML='<option value="">— selecione o modelo primeiro —</option>';
   document.getElementById('sel-cor').disabled=true;
   document.getElementById('tam-grid').innerHTML='<div style="font-size:12px;color:var(--txt-s);padding:8px 0;">Selecione o modelo e a cor primeiro</div>';
