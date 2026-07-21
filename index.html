@@ -963,8 +963,6 @@ function registrar(){
   loteSelecionado.forEach(function(item){
     if(item.produto===produto && item.cor===cor && item.tamanho===tam) loteItem=item;
   });
-  var eanKey = produto+'|||'+cor+'|||'+tam;
-  var eanInfo = EAN_MAP[eanKey] || {};
   var locIni = document.getElementById('inp-loc-ini').value.trim().toUpperCase();
   var locFim = document.getElementById('inp-loc-fim').value.trim().toUpperCase();
   var localizacao = locIni && locFim ? locIni+'-'+locFim : locIni || locFim || '';
@@ -973,7 +971,7 @@ function registrar(){
     acao:'contagem', invId:invAtivo.id, invNome:invAtivo.nome,
     colaborador:usuarioLogado, tipo:tipoSel,
     sku: loteItem ? loteItem.sku : '',
-    ean: '',  // script busca EAN pelo SKU
+    ean: '',
     produto:produto, cor:cor, tamanho:tam,
     localizacao: localizacao,
     quantidade:qtd, obs:obs
