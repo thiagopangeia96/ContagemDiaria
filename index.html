@@ -535,8 +535,8 @@ function registrarLivre(){
   var locIniL = document.getElementById('livre-loc-ini').value.trim().toUpperCase();
   var locFimL = document.getElementById('livre-loc-fim').value.trim().toUpperCase();
   var localizacaoL = locIniL && locFimL ? locIniL+'-'+locFimL : locIniL || locFimL || '';
-  var eanKey = produto+'||||'+cor+'||||'+tam;
-  var eanInfo = EAN_MAP[eanKey] || {};
+  var eanKey = '';
+  var eanInfo = {};
 
   var payload = {
     acao:'contagem', invId:'LIVRE', invNome:'CONTAGEM LIVRE',
@@ -958,7 +958,7 @@ function registrar(){
   if(!locIni2||!locFim2) erros.push('localização (inicial e final)');
   if(erros.length){ toast('⚠️ Preencha: '+erros.join(', ')); return; }
 
-  // SKU e EAN vêm do lote + EAN_MAP
+  // SKU vem do lote
   var loteItem = null;
   loteSelecionado.forEach(function(item){
     if(item.produto===produto && item.cor===cor && item.tamanho===tam) loteItem=item;
