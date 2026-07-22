@@ -964,7 +964,7 @@ function registrar(){
   loteSelecionado.forEach(function(item){
     if(item.produto===produto && item.cor===cor && item.tamanho===tam) loteItem=item;
   });
-  var eanKey2 = produto+'||||'+cor+'||||'+tam;
+  var eanKey2 = produto+'|||'+cor+'|||'+tam;
   var eanInfo2 = EAN_MAP[eanKey2] || {};
   var locIni = document.getElementById('inp-loc-ini').value.trim().toUpperCase();
   var locFim = document.getElementById('inp-loc-fim').value.trim().toUpperCase();
