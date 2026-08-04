@@ -260,6 +260,23 @@ body{font-family:-apple-system,"Segoe UI",sans-serif;background:var(--lav-l);col
     <div class="field"><label>Nome do inventário</label>
       <input type="text" id="inv-nome" placeholder="Ex: Contagem Calças Jul/2026">
     </div>
+    <div class="field"><label>Tipo de estoque a inventariar</label>
+      <div class="tipo-grid" style="grid-template-columns:repeat(2,1fr);">
+        <button type="button" class="tipo-btn" onclick="selTipoInv('Estoque Principal')" id="tipoInv-Principal">
+          <span class="tipo-icon">🏪</span>Estoque Principal
+        </button>
+        <button type="button" class="tipo-btn" onclick="selTipoInv('Estoque Reserva')" id="tipoInv-Reserva">
+          <span class="tipo-icon">📦</span>Estoque Reserva
+        </button>
+        <button type="button" class="tipo-btn" onclick="selTipoInv('Marketplace')" id="tipoInv-Marketplace">
+          <span class="tipo-icon">🛒</span>Marketplace
+        </button>
+        <button type="button" class="tipo-btn" onclick="selTipoInv('Geral')" id="tipoInv-Geral">
+          <span class="tipo-icon">🗂️</span>Geral (todos)
+        </button>
+      </div>
+      <div style="font-size:10px;color:var(--txt-s);margin-top:4px;">Específico = trava o tipo para o contador. Geral = contador escolhe e fica pré-selecionado.</div>
+    </div>
     <div style="margin-bottom:10px;">
       <button type="button" onclick="baixarModelo()" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#fff;color:var(--roxo);border:1.5px solid var(--roxo);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">
         ⬇️ Baixar planilha modelo
@@ -565,9 +582,7 @@ function registrarLivre(){
         document.getElementById('livre-tam').value='';
         document.getElementById('livre-qtd').value='';
         document.getElementById('livre-obs').value='';
-        tipoLivreSel='';
-        document.getElementById('tipoL-Principal').classList.remove('selected');
-        document.getElementById('tipoL-Reserva').classList.remove('selected');
+        // Tipo é STICKY: mantém o último selecionado entre lançamentos (não reseta).
         carregarHistLivre();
       } else { toast('❌ '+(d.erro||'Erro')); }
     })
@@ -657,6 +672,7 @@ function abrirContagem(inv){
   document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
   document.getElementById('page-contar').classList.add('active');
   limparForm();
+  aplicarTipoInventario(inv.tipo || 'Geral');
 
   // Carrega itens restritos do lote
   var selProd = document.getElementById('sel-produto');
@@ -801,10 +817,20 @@ function abrirResumo(invId, invNome){
     .catch(function(){ el.innerHTML='<div class="empty"><div class="empty-icon">❌</div><p>Erro ao carregar resumo</p></div>'; });
 }
 
+var tipoInvSel = '';
+function selTipoInv(tipo){
+  tipoInvSel = tipo;
+  document.getElementById('tipoInv-Principal').classList.toggle('selected', tipo==='Estoque Principal');
+  document.getElementById('tipoInv-Reserva').classList.toggle('selected', tipo==='Estoque Reserva');
+  document.getElementById('tipoInv-Marketplace').classList.toggle('selected', tipo==='Marketplace');
+  document.getElementById('tipoInv-Geral').classList.toggle('selected', tipo==='Geral');
+}
+
 function criarInventario(){
   var nome = (document.getElementById('inv-nome').value||'').trim();
   var file = document.getElementById('inv-file').files[0];
   if(!nome){ toast('⚠️ Informe o nome do inventário'); return; }
+  if(!tipoInvSel){ toast('⚠️ Selecione o tipo de estoque a inventariar'); return; }
   if(file){
     var reader = new FileReader();
     reader.onload = function(e){
@@ -832,13 +858,18 @@ function criarInventario(){
 }
 
 function enviarCriarInventario(nome, itens){
-  fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({acao:'criarInventario',nome:nome,itens:itens,master:usuarioLogado})})
+  fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({acao:'criarInventario',nome:nome,itens:itens,master:usuarioLogado,tipoInv:tipoInvSel})})
     .then(function(r){ return r.json(); })
     .then(function(d){
       if(d.ok){
         toast('✅ Inventário "'+nome+'" criado!');
         document.getElementById('inv-nome').value='';
         document.getElementById('inv-file').value='';
+        tipoInvSel='';
+        document.getElementById('tipoInv-Principal').classList.remove('selected');
+        document.getElementById('tipoInv-Reserva').classList.remove('selected');
+        document.getElementById('tipoInv-Marketplace').classList.remove('selected');
+        document.getElementById('tipoInv-Geral').classList.remove('selected');
         carregarMasterInventarios();
       } else { toast('❌ '+d.erro); }
     });
@@ -939,6 +970,28 @@ function selTipo(tipo){
   document.getElementById('tipo-Marketplace').classList.toggle('selected', tipo==='Marketplace');
 }
 
+// Aplica o tipo definido na criação do inventário.
+// Específico (Principal/Reserva/Marketplace) → pré-seleciona e TRAVA os botões (lote e livre).
+// Geral → libera os botões; o sticky mantém o último tipo selecionado.
+function tipoInvTravado(tipoInv){
+  return tipoInv && tipoInv !== 'Geral';
+}
+function aplicarTipoInventario(tipoInv){
+  var travar = tipoInvTravado(tipoInv);
+  // Modo lote
+  selTipo(travar ? tipoInv : '');
+  ['tipo-Principal','tipo-Reserva','tipo-Marketplace'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el){ el.disabled = travar; el.style.opacity = travar ? '.55' : '1'; el.style.cursor = travar ? 'not-allowed' : 'pointer'; }
+  });
+  // Modo livre
+  selTipoLivre(travar ? tipoInv : '');
+  ['tipoL-Principal','tipoL-Reserva','tipoL-Marketplace'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el){ el.disabled = travar; el.style.opacity = travar ? '.55' : '1'; el.style.cursor = travar ? 'not-allowed' : 'pointer'; }
+  });
+}
+
 // ── REGISTRAR ──────────────────────────────────────────────
 function registrar(){
   if(!invAtivo){ toast('⚠️ Nenhum inventário ativo'); return; }
@@ -1025,10 +1078,7 @@ function limparForm(){
   document.getElementById('inp-obs').value='';
   document.getElementById('inp-loc-ini').value='';
   document.getElementById('inp-loc-fim').value='';
-  tipoSel='';
-  document.getElementById('tipo-Principal').classList.remove('selected');
-  document.getElementById('tipo-Reserva').classList.remove('selected');
-  document.getElementById('tipo-Marketplace').classList.remove('selected');
+  // Tipo é STICKY: mantém o último selecionado entre lançamentos (não reseta).
 }
 
 // ── HISTÓRICO DO INVENTÁRIO ────────────────────────────────
