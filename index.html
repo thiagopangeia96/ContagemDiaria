@@ -1241,7 +1241,7 @@ function carregarCheckLotes(){
         var btnFin = (isMaster && l.status === 'ABERTO')
           ? '<button onclick="finalizarCheckLoteById(\''+l.id+'\')" style="font-size:11px;color:#dc2626;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:4px 10px;cursor:pointer;font-weight:700;">Finalizar</button>'
           : '';
-        return '<div style="display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--brd);" onclick="abrirCheckLote('+JSON.stringify(l)+')" style="cursor:pointer;">'
+        return '<div style="display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--brd);cursor:pointer;" onclick="abrirCheckLote('+JSON.stringify(l)+')">'
           +'<div style="font-size:22px;">'+icone+'</div>'
           +'<div style="flex:1;min-width:0;">'
           +'<div style="font-weight:700;font-size:13px;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+l.nome+'</div>'
