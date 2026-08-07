@@ -1474,12 +1474,10 @@ function renderCheckItens(){
             ? '<button onclick="desfazerCheck('+idx+')" style="font-size:11px;padding:5px 10px;border:1.5px solid var(--brd);border-radius:7px;background:#fff;cursor:pointer;color:var(--txt-s);">↩ Desfazer</button>'
             : '<button onclick="marcarAusente('+idx+')" style="font-size:11px;padding:5px 10px;border:1.5px solid #fecaca;border-radius:7px;background:#fef2f2;cursor:pointer;color:#dc2626;font-weight:700;">❌ Não tem</button>')
           +'</div>'
-          // Campo editar local
-          +'<div style="display:flex;gap:6px;margin-top:6px;">'
-          +'<input type="text" id="ckloc'+idx+'" placeholder="Corrigir local..." value="'+(alt && alt.acao==='LOCAL_ALTERADO' ? alt.novoLocal : '')+'" maxlength="20"'
-          +' style="flex:1;padding:7px 10px;border:1.5px solid var(--brd);border-radius:8px;font-size:12px;">'
-          +'<button onclick="corrigirLocalCheck('+idx+')" style="padding:7px 12px;background:var(--roxo);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">Salvar</button>'
-          +'</div>';
+          +'<input type="text" id="ckloc'+idx+'" placeholder="Local diferente? Digite aqui..." value="'+(alt && alt.acao==='LOCAL_ALTERADO' ? alt.novoLocal : '')+'" maxlength="20"'
+          +' onblur="autoCorrigirLocal('+idx+',this.value)"'
+          +' style="width:100%;margin-top:6px;padding:8px 10px;border:1.5px solid var(--brd);border-radius:8px;font-size:12px;box-sizing:border-box;"'
+          +' onfocus="this.style.borderColor=\'var(--roxo)\'" onblur="this.style.borderColor=\'var(--brd)\';autoCorrigirLocal('+idx+',this.value)">';
       }
     }
 
@@ -1516,6 +1514,25 @@ function marcarAusente(idx){
   checkAlteracoes[idx] = {acao:'AUSENTE', novoLocal:'', qtd:0};
   atualizarProgressoCheck();
   renderCheckItens();
+}
+
+function autoCorrigirLocal(idx, valor){
+  var novoLocal = (valor||'').trim().toUpperCase();
+  if(novoLocal){
+    checkAlteracoes[idx] = {acao:'LOCAL_ALTERADO', novoLocal:novoLocal, qtd:0};
+    // Só atualiza o ponto visual sem re-renderizar a lista inteira
+    var card = document.getElementById('ckloc'+idx);
+    if(card){
+      card.style.borderColor = 'var(--roxo)';
+      var dot = card.closest('[style*="border-radius:12px"]');
+      if(dot){ dot.style.borderLeft = '4px solid var(--roxo)'; }
+    }
+  } else {
+    delete checkAlteracoes[idx];
+    var card2 = document.getElementById('ckloc'+idx);
+    if(card2){ card2.style.borderColor = 'var(--brd)'; }
+  }
+  atualizarProgressoCheck();
 }
 
 function corrigirLocalCheck(idx){
