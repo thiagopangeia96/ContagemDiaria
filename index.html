@@ -1450,12 +1450,12 @@ function renderCheckItens(){
         var vLoc = alt ? alt.novoLocal : '';
         var vQtd = alt ? alt.qtd : '';
         corpo = '<div style="display:flex;gap:8px;margin-top:8px;align-items:center;">'
-          +'<input type="text" placeholder="Local (ex: N4.1)" value="'+vLoc+'" maxlength="20"'
-          +' onchange="setCheckSemLocal('+idx+',this.value,document.getElementById(\'ckq'+idx+'\').value)"'
-          +' style="flex:2;padding:7px 10px;border:1.5px solid var(--brd);border-radius:8px;font-size:13px;">'
-          +'<input type="number" id="ckq'+idx+'" placeholder="Qtd" value="'+vQtd+'" min="1" maxlength="6"'
-          +' onchange="setCheckSemLocal('+idx+',document.querySelector(\'[onchange*=\\\''+idx+'\\\'][placeholder=\\\"Local (ex: N4.1)\\\"]\').value,this.value)"'
-          +' style="flex:1;padding:7px 10px;border:1.5px solid var(--brd);border-radius:8px;font-size:13px;">'
+          +'<input type="text" id="ckloc'+idx+'" placeholder="Local (ex: N4.1)" value="'+vLoc+'" maxlength="20"'
+          +' style="flex:2;padding:7px 10px;border:1.5px solid var(--brd);border-radius:8px;font-size:13px;"'
+          +' onfocus="this.style.borderColor=\'var(--roxo)\'" onblur="this.style.borderColor=\'var(--brd)\'">'
+          +'<input type="number" id="ckq'+idx+'" placeholder="Qtd" value="'+vQtd+'" min="1"'
+          +' style="flex:1;padding:7px 10px;border:1.5px solid var(--brd);border-radius:8px;font-size:13px;"'
+          +' onfocus="this.style.borderColor=\'var(--roxo)\'" onblur="this.style.borderColor=\'var(--brd)\'">'
           +'</div>';
       }
     } else {
@@ -1558,10 +1558,26 @@ function finalizarCheckLote(){
 function finalizarCheckLoteById(loteId){
   if(!confirm('Finalizar este lote? Os resultados serão gravados na planilha.')) return;
 
+  var isSemLocal = checkLoteAtivo.tipo === 'SEM_LOCAL';
+
+  // Para SEM LOCAL: lê os campos do DOM agora e popula checkAlteracoes
+  if(isSemLocal){
+    checkItens.forEach(function(it, idx){
+      var locEl = document.getElementById('ckloc'+idx);
+      var qtdEl = document.getElementById('ckq'+idx);
+      if(locEl && qtdEl){
+        var local = (locEl.value||'').trim().toUpperCase();
+        var qtd   = parseInt(qtdEl.value)||0;
+        if(local && qtd>0){
+          checkAlteracoes[idx] = {acao:'LOCALIZADO', novoLocal:local, qtd:qtd};
+        }
+      }
+    });
+  }
+
   // Monta registros — só os que tiveram ação + os não tocados (automáticos)
   var registros = checkItens.map(function(it, idx){
     var alt = checkAlteracoes[idx];
-    var isSemLocal = checkLoteAtivo.tipo === 'SEM_LOCAL';
     var acao, novoLocal, qtd, alterado;
     if(alt){
       acao      = alt.acao;
