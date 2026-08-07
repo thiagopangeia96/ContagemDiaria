@@ -1233,15 +1233,17 @@ function carregarCheckLotes(){
         container.innerHTML = '<div class="empty"><div class="empty-icon">📍</div><p>Nenhuma conferência aberta</p></div>';
         return;
       }
-      container.innerHTML = lotes.map(function(l){
+      // Guarda lotes globalmente para acessar pelo índice no onclick
+      window._checkLotesCache = lotes;
+      container.innerHTML = lotes.map(function(l, idx){
         var badge = l.status === 'ABERTO'
           ? '<span style="background:#dcfce7;color:#166534;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;">ABERTO</span>'
           : '<span style="background:#f1f5f9;color:#64748b;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;">FECHADO</span>';
         var icone = l.tipo === 'SEM_LOCAL' ? '🔎' : '📍';
         var btnFin = (isMaster && l.status === 'ABERTO')
-          ? '<button onclick="finalizarCheckLoteById(\''+l.id+'\')" style="font-size:11px;color:#dc2626;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:4px 10px;cursor:pointer;font-weight:700;">Finalizar</button>'
+          ? '<button onclick="event.stopPropagation();finalizarCheckLoteById(\''+l.id+'\')" style="font-size:11px;color:#dc2626;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:4px 10px;cursor:pointer;font-weight:700;">Finalizar</button>'
           : '';
-        return '<div style="display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--brd);cursor:pointer;" onclick="abrirCheckLote('+JSON.stringify(l)+')">'
+        return '<div style="display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--brd);cursor:pointer;" onclick="abrirCheckLote(window._checkLotesCache['+idx+'])">'
           +'<div style="font-size:22px;">'+icone+'</div>'
           +'<div style="flex:1;min-width:0;">'
           +'<div style="font-weight:700;font-size:13px;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+l.nome+'</div>'
